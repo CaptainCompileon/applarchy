@@ -1,15 +1,23 @@
 import AppKit
+import IOKit.ps
 import ScreenSaver
 
 /// The live wallpaper: one borderless window per screen at desktop level
 /// (behind the icons), on every Space, ignoring the mouse. Rendering pauses
 /// while the desktop is covered, the displays sleep, the screensaver runs, the
-/// session is inactive, or the user pauses it.
+/// session is inactive, the user pauses it, or (optionally) on battery power or
+/// in Low Power Mode.
 final class Wallpaper: NSObject, ObservableObject {
     static let shared = Wallpaper()
 
     @Published private(set) var config: EffectConfig?
     @Published var paused = false { didSet { updateAnimation() } }
+    @Published var options = Store.wallpaperOptions {
+        didSet { Store.wallpaperOptions = options; if options.fps != oldValue.fps { rebuild() } else { updateAnimation() } }
+    }
+    /// Why the wallpaper is currently paused by a power setting, for the status line.
+    @Published private(set) var powerPause: String?
+    private var powerSource: CFRunLoopSource?
     private var windows: [NSWindow] = []
     private var views: [StudioEffectView] = []
     private var systemPaused = false
@@ -27,6 +35,26 @@ final class Wallpaper: NSObject, ObservableObject {
         let dnc = DistributedNotificationCenter.default()
         dnc.addObserver(self, selector: #selector(systemPause), name: .init("com.apple.screensaver.didstart"), object: nil)
         dnc.addObserver(self, selector: #selector(systemResume), name: .init("com.apple.screensaver.didstop"), object: nil)
+        // Power: battery/AC changes and Low Power Mode.
+        let context = Unmanaged.passUnretained(self).toOpaque()
+        if let source = IOPSNotificationCreateRunLoopSource({ context in
+            guard let context else { return }
+            Unmanaged<Wallpaper>.fromOpaque(context).takeUnretainedValue().powerChanged()
+        }, context)?.takeRetainedValue() {
+            CFRunLoopAddSource(CFRunLoopGetMain(), source, .defaultMode)
+            powerSource = source
+        }
+        NotificationCenter.default.addObserver(self, selector: #selector(powerChanged), name: .NSProcessInfoPowerStateDidChange, object: nil)
+    }
+
+    @objc private func powerChanged() {
+        DispatchQueue.main.async { self.updateAnimation() }
+    }
+
+    private var onBattery: Bool {
+        guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
+              let type = IOPSGetProvidingPowerSourceType(info)?.takeUnretainedValue() else { return false }
+        return (type as String) == kIOPMBatteryPowerKey
     }
 
     func start(_ config: EffectConfig) {
@@ -67,14 +95,15 @@ final class Wallpaper: NSObject, ObservableObject {
 
             guard let view = StudioEffectView(frame: NSRect(origin: .zero, size: screen.frame.size), isPreview: false) else { continue }
             view.effectCommands = config.commands(forWallpaper: true)
+            view.customLogoText = config.customLogo
             view.logoName = config.logo
+            view.themeID = config.theme
             view.showsClock = false
-            view.logoRegionTop = 0
             view.holdSeconds = 4
             view.maxEngineFrames = 200_000
             view.followsScreensaverStop = false
             view.bitmapScale = 1                    // 1x pixels, scaled up crisply: pixel art, cheap
-            view.animationTimeInterval = 1.0 / 30.0
+            view.animationTimeInterval = 1.0 / Double(options.fps)
             window.contentView = view
             window.orderFrontRegardless()
             NotificationCenter.default.addObserver(self, selector: #selector(occlusionChanged), name: NSWindow.didChangeOcclusionStateNotification, object: window)
@@ -89,8 +118,11 @@ final class Wallpaper: NSObject, ObservableObject {
     @objc private func systemResume() { systemPaused = false; updateAnimation() }
 
     private func updateAnimation() {
+        if options.pauseOnBattery && onBattery { powerPause = "on battery" }
+        else if options.pauseInLowPowerMode && ProcessInfo.processInfo.isLowPowerModeEnabled { powerPause = "Low Power Mode" }
+        else { powerPause = nil }
         for (window, view) in zip(windows, views) {
-            let run = !paused && !systemPaused && window.occlusionState.contains(.visible)
+            let run = !paused && !systemPaused && powerPause == nil && window.occlusionState.contains(.visible)
             if run && !view.isAnimating { view.startAnimation() }
             if !run && view.isAnimating { view.stopAnimation() }
         }

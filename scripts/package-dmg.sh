@@ -3,6 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 VERSION=$(cat VERSION)
+# Uses dist/Applarchy.app as it is (so a signed build stays signed); builds it if missing.
 [ -d dist/Applarchy.app ] || scripts/build.sh
 STAGE=$(mktemp -d)
 cp -R dist/Applarchy.app "$STAGE/"

@@ -6,14 +6,19 @@ cd "$(dirname "$0")"
 VERSION=$(cat ../VERSION)
 S=../saver
 "$S/build.sh" >/dev/null
+source ../scripts/engine.sh
 APP="build/Applarchy.app/Contents"
 rm -rf build && mkdir -p "$APP/MacOS" "$APP/Resources" build/src
 sed "s/ApplarchySaverView/StudioEffectView/g" $S/ApplarchySaverView.swift > build/src/StudioEffectView.swift
-cp $S/PixelClock.swift $S/LogoArt.swift *.swift build/src/
-swiftc -O -module-name Applarchy -target arm64-apple-macos13 \
-  -import-objc-header $S/ttfx.h build/src/*.swift ../engine/target/release/libttfx.a \
-  -framework ScreenSaver -framework AppKit -framework SwiftUI -framework CoreText \
-  -o "$APP/MacOS/Applarchy" 2>&1 | { grep -v '^ld: warning' || true; }
+cp $S/PixelClock.swift $S/LogoArt.swift $S/Themes.swift *.swift build/src/
+for arch in $ARCHS; do
+  swiftc -O -module-name Applarchy -target "$arch-apple-macos13" \
+    -import-objc-header $S/ttfx.h build/src/*.swift "$ENGINE_LIB" \
+    -framework ScreenSaver -framework AppKit -framework SwiftUI -framework CoreText \
+    -o "build/Applarchy-$arch" 2>&1 | { grep -v '^ld: warning' || true; }
+done
+lipo -create build/Applarchy-* -output "$APP/MacOS/Applarchy"
+rm -f build/Applarchy-*
 rm -rf build/src
 cp AppIcon.icns fonts/DepartureMono-Regular.otf fonts/DepartureMono-LICENSE.txt "$APP/Resources/"
 cp -R "$S/build/Applarchy.saver" "$APP/Resources/"

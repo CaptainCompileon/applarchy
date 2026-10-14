@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
         migrateEarlierVersions()
         Wallpaper.shared.restore()
+        Updates.shared.start()
         buildMainMenu()
         buildStatusItem()
         DistributedNotificationCenter.default().addObserver(self, selector: #selector(showWindow), name: .init("com.applarchy.app.show"), object: nil)
@@ -34,7 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     @objc func showWindow() {
         if window == nil {
-            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 680),
+            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1040, height: 840),
                              styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
             w.title = "Applarchy"
             w.isReleasedWhenClosed = false
@@ -98,6 +99,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         } else {
             menu.addItem(withTitle: "Wallpaper: Off", action: nil, keyEquivalent: "").isEnabled = false
         }
+        if let update = Updates.shared.available {
+            menu.addItem(.separator())
+            menu.addItem(item("Update Available: Applarchy \(update.version)…", #selector(openUpdate)))
+        }
         menu.addItem(.separator())
         menu.addItem(item("Quit Applarchy", #selector(NSApplication.terminate(_:)), target: NSApp))
     }
@@ -111,6 +116,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     @objc private func showTutorial() {
         showWindow()
         DispatchQueue.main.async { NotificationCenter.default.post(name: .showTutorial, object: nil) }
+    }
+
+    @objc private func openUpdate() {
+        if let url = Updates.shared.available?.url { NSWorkspace.shared.open(url) }
     }
 
     @objc private func togglePause() { Wallpaper.shared.paused.toggle() }
@@ -140,15 +149,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
 
     /// Testing/README: a real window placed off-screen, captured after the preview has
-    /// animated for a while. Selection from OMARCHY_SNAPSHOT ("effects;logo;clock;focus;tutorial").
+    /// animated for a while. Selection from OMARCHY_SNAPSHOT ("effects;logo;clock;focus;tutorial;theme").
     private func windowSnapshot(to path: String) {
         let spec = (ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT"] ?? "").split(separator: ";", omittingEmptySubsequences: false).map(String.init)
         func field(_ i: Int) -> String { i < spec.count ? spec[i] : "" }
         let effects = field(0).isEmpty ? Catalog.allIDs : field(0).split(separator: ",").map(String.init)
-        let draft = EffectConfig(effects: effects, logo: field(1).isEmpty ? "apple-small" : field(1), showClock: field(2) != "0")
+        var draft = EffectConfig(effects: effects, logo: field(1).isEmpty ? "apple-small" : field(1), showClock: field(2) != "0")
+        if !field(5).isEmpty { draft.theme = field(5) }
         let content = ContentView(snapshot: (draft, field(3).isEmpty ? nil : field(3), field(4) == "1"))
             .environmentObject(Wallpaper.shared)
-        let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 680),
+        let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1040, height: 840),
                          styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         w.title = "Applarchy"
         w.appearance = NSAppearance(named: .darkAqua)
