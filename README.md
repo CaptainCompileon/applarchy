@@ -73,7 +73,7 @@ Spotlights · Spray · Swarm · Sweep · Synth Grid · Thunderstorm · Unstable 
 
 ## Install
 
-1. Download **`Applarchy-1.0.dmg`** from the [latest release](https://github.com/CaptainCompileon/applarchy/releases/latest).
+1. Download **`Applarchy-<version>.dmg`** from the [latest release](https://github.com/CaptainCompileon/applarchy/releases/latest).
 2. Open it and drag **Applarchy** into **Applications**.
 3. Open Applarchy from Applications.
 
@@ -112,7 +112,7 @@ You need the Xcode Command Line Tools (`xcode-select --install`) and Rust
 git clone https://github.com/CaptainCompileon/applarchy.git
 cd applarchy
 scripts/build.sh          # → dist/Applarchy.app
-scripts/package-dmg.sh    # → dist/Applarchy-1.0.dmg
+scripts/package-dmg.sh    # → dist/Applarchy-<version>.dmg
 ```
 
 ## How it works
@@ -152,6 +152,8 @@ studio/   the app: SwiftUI front end, live preview, wallpaper windows, screensav
   [`engine/LICENSE`](engine/LICENSE) and [`engine/NOTICE`](engine/NOTICE)).
 - **[Omarchy](https://github.com/basecamp/omarchy)** by Basecamp — the screensaver that inspired
   this.
+- **[Departure Mono](https://departuremono.com)** by Helena Zhang — the app's pixel typeface
+  (SIL Open Font License 1.1; see [`studio/fonts/DepartureMono-LICENSE.txt`](studio/fonts/DepartureMono-LICENSE.txt)).
 
 ## License
 

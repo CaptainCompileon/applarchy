@@ -35,6 +35,7 @@ struct ContentView: View {
         }
         .frame(minWidth: 940, minHeight: 640)
         .background(Color(nsColor: .windowBackgroundColor))
+        .font(Pixel.body)
         .onAppear { if !tutorialSeen && !snapshotMode { withAnimation(.easeOut(duration: 0.3).delay(0.35)) { showTutorial = true } } }
         .onChange(of: showTutorial) { if !$0 && !snapshotMode { tutorialSeen = true } }
         .onReceive(NotificationCenter.default.publisher(for: .showTutorial)) { _ in withAnimation(.easeOut(duration: 0.25)) { showTutorial = true } }
@@ -47,7 +48,7 @@ struct ContentView: View {
     private var effectList: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("Effects").font(.headline)
+                Text("EFFECTS").font(Pixel.title)
                 Button { withAnimation(.easeOut(duration: 0.25)) { showTutorial = true } } label: {
                     Image(systemName: "questionmark.circle")
                 }
@@ -61,8 +62,8 @@ struct ContentView: View {
                 HStack(alignment: .top, spacing: 8) {
                     Toggle("", isOn: selected(effect.id)).labelsHidden()
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(effect.title).fontWeight(focused == effect.id ? .semibold : .regular)
-                        Text(effect.summary).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        Text(effect.title).font(Pixel.body).foregroundStyle(focused == effect.id ? Color.white : Color.primary)
+                        Text(effect.summary).font(Pixel.body).foregroundStyle(.secondary).lineLimit(3).lineSpacing(2)
                     }
                     Spacer(minLength: 0)
                     if focused == effect.id { Image(systemName: "play.fill").foregroundStyle(.tint) }
@@ -71,8 +72,8 @@ struct ContentView: View {
                 .contentShape(Rectangle())
                 .onTapGesture { focused = focused == effect.id ? nil : effect.id }
             }
-            Text("\(draft.effects.count) of \(Catalog.effects.count) selected · click a name to preview it")
-                .font(.caption).foregroundStyle(.secondary).padding(12)
+            Text("\(draft.effects.count)/\(Catalog.effects.count) selected · click a name to preview")
+                .foregroundStyle(.secondary).padding(12)
         }
     }
 
@@ -101,10 +102,10 @@ struct ContentView: View {
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(.separator))
             Text(focused.map { id in "Previewing \(Catalog.effects.first { $0.id == id }!.title) — click it again to preview your selection" }
                  ?? (draft.effects.count == 1 ? "Previewing your selection" : "Previewing your selection in random order"))
-                .font(.caption).foregroundStyle(.secondary)
+                .foregroundStyle(.secondary)
 
             HStack(spacing: 16) {
-                Text("Logo").font(.system(size: 12, weight: .semibold, design: .monospaced)).foregroundStyle(.secondary)
+                Text("LOGO").foregroundStyle(.secondary)
                 PixelSegmented(selection: $draft.logo, options: [
                     ("apple-small", EffectConfig.logoTitle("apple-small")),
                     ("apple", EffectConfig.logoTitle("apple")),
@@ -121,17 +122,17 @@ struct ContentView: View {
             }
             .padding(.top, 4)
             .disabled(draft.effects.isEmpty)
-            if draft.effects.isEmpty { Text("Select at least one effect.").font(.caption).foregroundStyle(.secondary) }
+            if draft.effects.isEmpty { Text("Select at least one effect.").foregroundStyle(.secondary) }
 
             if Bundle.main.bundlePath.contains("/AppTranslocation/") {
                 Label("Move Applarchy to your Applications folder and open it from there, so it can start at login.",
                       systemImage: "exclamationmark.triangle")
-                    .font(.system(size: 12, design: .monospaced)).foregroundStyle(.orange)
+                    .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             if let message {
-                Text(message).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(message).foregroundStyle(.secondary).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 0)
@@ -152,7 +153,7 @@ struct ContentView: View {
 
     private func statusRow<Buttons: View>(title: String, value: String, @ViewBuilder buttons: () -> Buttons) -> some View {
         HStack {
-            Text(title).fontWeight(.semibold).frame(width: 90, alignment: .leading)
+            Text(title.uppercased()).frame(width: 110, alignment: .leading)
             Text(value).foregroundStyle(.secondary)
             Spacer()
             buttons()

@@ -15,7 +15,7 @@ swiftc -O -module-name Applarchy -target arm64-apple-macos13 \
   -framework ScreenSaver -framework AppKit -framework SwiftUI -framework CoreText \
   -o "$APP/MacOS/Applarchy" 2>&1 | { grep -v '^ld: warning' || true; }
 rm -rf build/src
-cp AppIcon.icns "$APP/Resources/"
+cp AppIcon.icns fonts/DepartureMono-Regular.otf fonts/DepartureMono-LICENSE.txt "$APP/Resources/"
 cp -R "$S/build/Applarchy.saver" "$APP/Resources/"
 cat > "$APP/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
