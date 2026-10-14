@@ -34,6 +34,7 @@ struct TutorialOverlay: View {
                 .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(.white.opacity(0.12)))
                 .shadow(color: .black.opacity(0.45), radius: 40, y: 18)
         }
+        .font(Pixel.body)
     }
 
     private var card: some View {
@@ -52,10 +53,10 @@ struct TutorialOverlay: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("STEP \(page + 1) OF \(steps.count)")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced)).tracking(1.2)
+                    .font(Pixel.body)
                     .foregroundStyle(.secondary)
-                Text(steps[page].title).font(.system(size: 22, weight: .bold))
-                Text(steps[page].body).font(.system(size: 13.5)).foregroundStyle(.secondary)
+                Text(steps[page].title).font(Pixel.display)
+                Text(steps[page].body).font(Pixel.body).lineSpacing(4).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(minHeight: 54, alignment: .top)
             }
@@ -81,7 +82,7 @@ struct TutorialOverlay: View {
                 HStack(spacing: 8) {
                     if page > 0 {
                         Button { go(to: page - 1) } label: {
-                            Text("◀").font(.system(size: 12.5, weight: .bold, design: .monospaced))
+                            Text("◀").font(Pixel.body)
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 12).padding(.vertical, 8)
                                 .background(Color(white: 0.14))
@@ -91,7 +92,7 @@ struct TutorialOverlay: View {
                     }
                     Button { page == steps.count - 1 ? close() : go(to: page + 1) } label: {
                         Text((page == steps.count - 1 ? "Get Started" : "Next") + " ▶")
-                            .font(.system(size: 12.5, weight: .bold, design: .monospaced))
+                            .font(Pixel.body)
                             .foregroundStyle(.black)
                             .padding(.horizontal, 16).padding(.vertical, 8)
                             .background(Color.white)
@@ -160,7 +161,7 @@ struct Shot: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(.white.opacity(0.15)))
                 .shadow(color: .black.opacity(0.5), radius: 10, y: 4)
-            Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+            Text(title.uppercased()).font(Pixel.body).foregroundStyle(.white)
         }
         .frame(maxWidth: .infinity)
     }
@@ -171,7 +172,7 @@ private struct Badge: View {
     let icon: String
     var body: some View {
         Label(text, systemImage: icon)
-            .font(.system(size: 10.5, weight: .bold)).tracking(0.8)
+            .font(Pixel.body)
             .foregroundStyle(.white)
             .padding(.horizontal, 9).padding(.vertical, 5)
             .background(.black.opacity(0.55), in: Capsule())
@@ -194,7 +195,7 @@ private struct ListIllustration: View {
                         Image(systemName: on ? "checkmark.square.fill" : "square")
                             .font(.system(size: 15))
                             .foregroundStyle(on ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.white.opacity(0.4)))
-                        Text(name).font(.system(size: 13, weight: playing ? .bold : .regular)).foregroundStyle(.white)
+                        Text(name).font(Pixel.body).foregroundStyle(playing ? Color.white : Color.white.opacity(0.8))
                         Spacer()
                         if playing { Image(systemName: "play.fill").font(.system(size: 10)).foregroundStyle(Color.accentColor) }
                     }
@@ -213,7 +214,7 @@ private struct ListIllustration: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.white.opacity(0.15)))
                     .shadow(color: .black.opacity(0.5), radius: 10, y: 4)
-                Text("Click a name to preview it").font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.7))
+                Text("Click a name to preview it").font(Pixel.body).foregroundStyle(.white.opacity(0.7))
             }
         }
         .padding(18)

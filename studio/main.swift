@@ -214,6 +214,7 @@ if !others.isEmpty && !CommandLine.arguments.contains("--snapshot") && !CommandL
     exit(0)
 }
 
+Pixel.register()
 let app = NSApplication.shared
 app.setActivationPolicy(.accessory)
 let delegate = AppDelegate()

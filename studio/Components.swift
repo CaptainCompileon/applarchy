@@ -26,15 +26,14 @@ struct BigActionButton: View {
             PixelIconView(icon: icon, color: ink).frame(width: 30, height: 30)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title.uppercased())
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
-                    .tracking(0.5)
+                    .font(Pixel.title)
                 Text(subtitle)
-                    .font(.system(size: 11, weight: .regular, design: .monospaced))
+                    .font(Pixel.body)
                     .lineLimit(1)
                     .opacity(0.65)
             }
             Spacer(minLength: 0)
-            Text("▶").font(.system(size: 11, design: .monospaced)).opacity(hovering ? 1 : 0.35)
+            Text("▶").font(Pixel.body).opacity(hovering ? 1 : 0.35)
         }
         .foregroundStyle(ink)
         .padding(.horizontal, 16)
@@ -140,7 +139,7 @@ private struct PixelButtonBody: View {
         let lit = hovering && isEnabled
         let pressed = configuration.isPressed
         configuration.label
-            .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+            .font(Pixel.body)
             .foregroundStyle(lit ? Color.black : Color.white)
             .padding(.horizontal, 10).padding(.vertical, 5)
             .background(lit ? Color.white : Color(white: 0.1))
@@ -165,7 +164,7 @@ struct PixelSegmented: View {
                 let on = options[i].tag == selection
                 Button { selection = options[i].tag } label: {
                     Text(options[i].title)
-                        .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                        .font(Pixel.body)
                         .foregroundStyle(on ? Color.black : Color.white.opacity(0.85))
                         .padding(.horizontal, 12).padding(.vertical, 6)
                         .frame(maxWidth: .infinity)
