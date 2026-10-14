@@ -1,0 +1,45 @@
+name: Build
+
+# Builds the universal (Apple Silicon + Intel) DMG. On a version tag it is also
+# attached to that tag's GitHub release (creating the release if needed); run it
+# by hand from the Actions tab to just get the DMG as a build artifact.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  dmg:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust targets
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Build
+        run: scripts/package-dmg.sh
+
+      - name: Check
+        run: |
+          lipo -info dist/Applarchy.app/Contents/MacOS/Applarchy
+          lipo -info dist/Applarchy.app/Contents/Resources/Applarchy.saver/Contents/MacOS/ApplarchySaverView
+          codesign --verify dist/Applarchy.app
+          shasum -a 256 dist/*.dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Applarchy-dmg
+          path: dist/*.dmg
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --title "Applarchy ${GITHUB_REF_NAME#v}" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" dist/*.dmg --clobber

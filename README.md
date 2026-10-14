@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/CaptainCompileon/applarchy/releases/latest"><img src="https://img.shields.io/github/v/release/CaptainCompileon/applarchy?style=flat-square&color=8A008A" alt="Release"></a>
   <img src="https://img.shields.io/badge/macOS-13%2B-black?style=flat-square&logo=apple" alt="macOS 13+">
-  <img src="https://img.shields.io/badge/Apple%20Silicon-arm64-black?style=flat-square" alt="Apple Silicon">
+  <img src="https://img.shields.io/badge/Universal-Apple%20Silicon%20%2B%20Intel-black?style=flat-square" alt="Universal: Apple Silicon and Intel">
   <img src="https://img.shields.io/badge/license-MIT-00D1FF?style=flat-square" alt="MIT license">
 </p>
 
@@ -37,9 +37,20 @@ real macOS screensaver and as a live desktop wallpaper, with the effect engine c
 - **Screensaver** — appears in System Settings → Screen Saver, with an optional pixel-font clock.
 - **Live wallpaper** — runs behind your desktop icons on every screen and Space, and pauses itself
   whenever the desktop is covered, the display sleeps or the screensaver runs.
-- **Choose your vibe** — *Chill Guy* (small logo) or *Apple Evangelist* (big logo).
-- **Live preview** of any effect, a quick first-run tour, and a ⛈ menu bar item to pause or stop the
-  wallpaper.
+- **Themes** — Omarchy's own colours or eight of its themes: Tokyo Night, Catppuccin, Gruvbox, Nord,
+  Everforest, Kanagawa, Rosé Pine and Matte Black. A theme recolours the effects, the background and
+  the clock.
+- **Choose your vibe** — *Chill Guy* (small logo), *Apple Evangelist* (big logo), or your **own logo**
+  from any picture or pasted text art.
+- **Clock options** — 12- or 24-hour (or follow the system), with or without the date, small or
+  large.
+- **Easy on the battery** — the wallpaper can run at 15 fps, and pause on battery power or in Low
+  Power Mode.
+- **Reduce Motion aware** — with macOS's Reduce Motion on, only the calm effects play.
+- **Update notices** — a note in the app and the menu bar when a new version is out.
+- **Universal** — runs natively on Apple Silicon and Intel Macs.
+- **Live preview** of any effect, a quick first-run tour, and a pixel menu bar item to pause or stop
+  the wallpaper.
 - **Pixel-perfect UI** — one pixel typeface, square controls and hard shadows throughout, to match
   the effects.
 
@@ -50,6 +61,18 @@ real macOS screensaver and as a live desktop wallpaper, with the effect engine c
 </p>
 <p align="center">
   <img src="docs/tutorial.png" width="88%" alt="The first-run tutorial">
+</p>
+
+### Themes
+
+<p align="center">
+  <img src="docs/themes.png" width="100%" alt="The eight themes: Tokyo Night, Catppuccin, Gruvbox, Nord, Everforest, Kanagawa, Rosé Pine and Matte Black">
+</p>
+
+### Your own logo
+
+<p align="center">
+  <img src="docs/custom-logo.png" width="88%" alt="The custom logo editor: a picture converted to block pixels, editable, with a live preview">
 </p>
 
 ### A few of the effects
@@ -88,19 +111,19 @@ Spotlights · Spray · Swarm · Sweep · Synth Grid · Thunderstorm · Unstable 
 > xattr -dr com.apple.quarantine /Applications/Applarchy.app
 > ```
 
-**Requirements:** a Mac with Apple Silicon, macOS 13 Ventura or later.
+**Requirements:** macOS 13 Ventura or later, on Apple Silicon or Intel.
 
 ## Usage
 
 1. **Pick effects** — tick the ones you like. Click an effect's name to preview just that one.
-2. **Choose your vibe** — *Chill Guy* or *Apple Evangelist*, and whether the screensaver shows the
-   clock.
+2. **Choose your look** — the logo (*Chill Guy*, *Apple Evangelist* or **Custom**: pick a picture or
+   paste text art), a theme, and the clock options.
 3. Click **Use as Screensaver** or **Use as Wallpaper**.
    - The first time you set the screensaver, macOS asks to install it — click **Install**. Then pick
      **Applarchy** under *Other* in System Settings → Screen Saver. After that, Applarchy updates
      the installed screensaver directly; changes show the next time it starts.
    - The wallpaper starts right away and comes back when you log in. Pause it or turn it off from
-     the ⛈ menu bar icon.
+     the storm-cloud icon in the menu bar. Its frame rate and battery options apply instantly.
 
 > **Tip:** the screensaver draws its own pixel clock. To avoid two clocks on top of each other, set
 > **System Settings → Lock Screen → Show large clock** to **On Lock Screen** (or **Never**).
@@ -117,6 +140,16 @@ scripts/build.sh          # → dist/Applarchy.app
 scripts/package-dmg.sh    # → dist/Applarchy-<version>.dmg
 ```
 
+Builds are **universal** (Apple Silicon + Intel) when [rustup](https://rustup.rs) has the Intel target
+(`rustup target add x86_64-apple-darwin`), and Apple Silicon only otherwise. Every version tag is
+also built on GitHub Actions, which attaches the DMG to the release.
+
+### Signing and notarization (maintainers)
+
+With a paid Apple Developer account, `scripts/sign-and-notarize.sh` signs the app with your
+Developer ID, notarizes the DMG with Apple and staples the ticket, so it opens without the
+"Open Anyway" step. See the script for the one-time setup.
+
 ## How it works
 
 ```
@@ -127,6 +160,8 @@ saver/    a native ScreenSaverView: parses each frame's ANSI cells and draws the
 studio/   the app: SwiftUI front end, live preview, wallpaper windows, screensaver installer
 ```
 
+- A **theme** is a set of ttfx options: the gradient the logo settles into (`--final-gradient-stops`),
+  each effect's signature colours (beams, rain, lightning, fireworks…) and the background colour.
 - The **logo** isn't shipped as artwork: it's drawn at runtime from your Mac's own system font
   (the `` character, U+F8FF) and resampled into half-block pixels.
 - The **screensaver** (`Applarchy.saver`) reads its settings from `Resources/config.json` inside
@@ -138,6 +173,11 @@ studio/   the app: SwiftUI front end, live preview, wallpaper windows, screensav
   wide-colour backing store every frame.
 - Effects run at Omarchy's 120 fps pace; rendering is 60 fps for the screensaver and 30 fps for
   the wallpaper.
+
+## Privacy
+
+Applarchy makes one network request: once a day it asks GitHub's public API for the latest
+release, to tell you about updates. Nothing about you or your Mac is sent.
 
 ## Uninstall
 

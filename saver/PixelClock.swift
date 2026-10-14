@@ -2,21 +2,38 @@ import AppKit
 
 /// A blocky 5x7 pixel-font clock and date, drawn over the top of the screensaver
 /// to match the half-block logo (in place of the system's large lock-screen clock).
+/// How the clock looks: 12/24-hour ("auto" follows the system), with or without
+/// the date, small or large, in the theme's foreground colour.
+struct ClockStyle: Equatable {
+    var hourCycle = "auto"          // "auto" | "12" | "24"
+    var showDate = true
+    var large = false
+    var color: UInt32 = 0xF0F0F0
+}
+
 enum PixelClock {
     // Sizes on a 982 pt tall screen; scaled to the view.
-    private static let datePixel: CGFloat = 4
-    private static let timePixel: CGFloat = 13
-    private static let gap: CGFloat = 14
+    private static func metrics(_ style: ClockStyle, _ bounds: CGRect) -> (date: CGFloat, time: CGFloat, gap: CGFloat) {
+        let s = bounds.height / 982
+        let date: CGFloat = style.large ? 5 : 4, time: CGFloat = style.large ? 18 : 13, gap: CGFloat = style.large ? 16 : 14
+        return (max(1, floor(date * s)), max(1, floor(time * s)), round(gap * s))
+    }
 
-    private static let timeColor = CGColor(red: 0.94, green: 0.94, blue: 0.94, alpha: 0.92)
-    private static let dateColor = CGColor(red: 0.62, green: 0.62, blue: 0.62, alpha: 0.92)
-
-    private static let timeFormatter: DateFormatter = {
+    private static let autoFormatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale.current
-        f.setLocalizedDateFormatFromTemplate("jmm")  // honours the 12/24-hour setting
+        f.setLocalizedDateFormatFromTemplate("jmm")  // honours the system 12/24-hour setting
         return f
     }()
+
+    private static func fixedFormatter(_ format: String) -> DateFormatter {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = format
+        return f
+    }
+    private static let twelve = fixedFormatter("h:mm a")
+    private static let twentyFour = fixedFormatter("HH:mm")
 
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -25,29 +42,31 @@ enum PixelClock {
         return f
     }()
 
-    static func timeString(_ date: Date = Date()) -> String {
-        timeFormatter.string(from: date).uppercased()
+    static func timeString(_ style: ClockStyle = ClockStyle(), _ date: Date = Date()) -> String {
+        let f = style.hourCycle == "12" ? twelve : style.hourCycle == "24" ? twentyFour : autoFormatter
+        return f.string(from: date).uppercased()
     }
 
     /// Height of the date + time block.
-    static func height(in bounds: CGRect) -> CGFloat {
-        let s = bounds.height / 982
-        let dp = max(1, floor(datePixel * s)), tp = max(1, floor(timePixel * s))
-        return 7 * dp + round(gap * s) + 7 * tp
+    static func height(in bounds: CGRect, style: ClockStyle = ClockStyle()) -> CGFloat {
+        let m = metrics(style, bounds)
+        return (style.showDate ? 7 * m.date + m.gap : 0) + 7 * m.time
     }
 
-    static func draw(in bounds: CGRect, top: CGFloat, _ ctx: CGContext) {
+    static func draw(in bounds: CGRect, top: CGFloat, style: ClockStyle = ClockStyle(), _ ctx: CGContext) {
         let now = Date()
-        let s = bounds.height / 982
-        let dp = max(1, floor(datePixel * s)), tp = max(1, floor(timePixel * s))
-        let date = dateFormatter.string(from: now)
-            .folding(options: .diacriticInsensitive, locale: nil).uppercased()
+        let m = metrics(style, bounds)
+        let c = style.color
+        let r = CGFloat(c >> 16 & 0xFF) / 255, g = CGFloat(c >> 8 & 0xFF) / 255, b = CGFloat(c & 0xFF) / 255
         var y = top
-        ctx.setFillColor(dateColor)
-        drawText(date, pixel: dp, centreX: bounds.midX, top: y, ctx)
-        y += 7 * dp + round(gap * s)
-        ctx.setFillColor(timeColor)
-        drawText(timeString(now), pixel: tp, centreX: bounds.midX, top: y, ctx)
+        if style.showDate {
+            let date = dateFormatter.string(from: now).folding(options: .diacriticInsensitive, locale: nil).uppercased()
+            ctx.setFillColor(CGColor(red: r * 0.66, green: g * 0.66, blue: b * 0.66, alpha: 0.92))
+            drawText(date, pixel: m.date, centreX: bounds.midX, top: y, ctx)
+            y += 7 * m.date + m.gap
+        }
+        ctx.setFillColor(CGColor(red: r, green: g, blue: b, alpha: 0.95))
+        drawText(timeString(style, now), pixel: m.time, centreX: bounds.midX, top: y, ctx)
     }
 
     private static func drawText(_ text: String, pixel p: CGFloat, centreX: CGFloat, top: CGFloat, _ ctx: CGContext) {

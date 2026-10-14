@@ -3,6 +3,8 @@ import ScreenSaver
 
 struct ContentView: View {
     @EnvironmentObject private var wallpaper: Wallpaper
+    @ObservedObject private var updates = Updates.shared
+    @State private var editingLogo = false
     @State private var draft: EffectConfig
     @State private var focused: String?          // effect previewed on its own
     @State private var hovered: String?
@@ -18,6 +20,7 @@ struct ContentView: View {
         _draft = State(initialValue: snapshot?.draft ?? Store.draft)
         _focused = State(initialValue: snapshot?.focused)
         _showTutorial = State(initialValue: snapshot?.tutorial ?? false)
+        _editingLogo = State(initialValue: snapshot != nil && ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT_EDITOR"] != nil)
         snapshotMode = snapshot != nil
     }
 
@@ -28,13 +31,18 @@ struct ContentView: View {
                 Rectangle().fill(Color.white.opacity(0.12)).frame(width: 1)
                 detail.padding(20)
             }
+            if editingLogo {
+                CustomLogoEditor(draft: $draft, isPresented: $editingLogo)
+                    .transition(.opacity)
+                    .zIndex(1)
+            }
             if showTutorial {
                 TutorialOverlay(isPresented: $showTutorial)
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
                     .zIndex(1)
             }
         }
-        .frame(minWidth: 940, minHeight: 640)
+        .frame(minWidth: 980, minHeight: 760)
         .background(Color(nsColor: .windowBackgroundColor))
         .font(Pixel.body)
         .tint(.white)
@@ -118,24 +126,17 @@ struct ContentView: View {
     }
 
     private var detail: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            PreviewView(effects: previewEffects, logo: draft.logo, showClock: draft.showClock)
+        VStack(alignment: .leading, spacing: 12) {
+            PreviewView(effects: previewEffects, config: draft)
                 .aspectRatio(16.0 / 10.0, contentMode: .fit)
+                .frame(maxWidth: .infinity)
                 .overlay(Rectangle().strokeBorder(Color.white.opacity(0.25), lineWidth: 1.5))
+                .layoutPriority(-1)
             Text(focused.map { id in "Previewing \(Catalog.effects.first { $0.id == id }!.title) — click it again to preview your selection" }
                  ?? (draft.effects.count == 1 ? "Previewing your selection" : "Previewing your selection in random order"))
                 .foregroundStyle(.secondary)
 
-            HStack(spacing: 16) {
-                Text("LOGO").foregroundStyle(.secondary)
-                PixelSegmented(selection: $draft.logo, options: [
-                    ("apple-small", EffectConfig.logoTitle("apple-small")),
-                    ("apple", EffectConfig.logoTitle("apple")),
-                ])
-                .frame(width: 300)
-                Toggle("Show clock on the screensaver", isOn: $draft.showClock)
-                    .toggleStyle(PixelCheckboxStyle())
-            }
+            options
 
             HStack(spacing: 12) {
                 BigActionButton(title: "Use as Screensaver", subtitle: "Plays when your Mac is idle",
@@ -143,7 +144,7 @@ struct ContentView: View {
                 BigActionButton(title: "Use as Wallpaper", subtitle: "Lives on your desktop",
                                 icon: .storm) { applyWallpaper() }
             }
-            .padding(.top, 4)
+            .padding(.top, 2)
             .disabled(draft.effects.isEmpty)
             if draft.effects.isEmpty { Text("Select at least one effect.").foregroundStyle(.secondary) }
 
@@ -157,19 +158,89 @@ struct ContentView: View {
                 Text(message).foregroundStyle(.secondary).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
             }
 
-            Spacer(minLength: 0)
             Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
             statusRow(title: "Screensaver",
                       value: screensaver?.summary ?? (screensaverInstalled ? "Installed, all effects" : "Not installed")) {
                 Button("Screen Saver Settings…") { Screensaver.openSettings() }.buttonStyle(PixelButtonStyle())
             }
-            statusRow(title: "Wallpaper",
-                      value: wallpaper.config.map { $0.summary + (wallpaper.paused ? " (paused)" : "") } ?? "Off") {
+            statusRow(title: "Wallpaper", value: wallpaperStatus) {
                 if wallpaper.isRunning {
                     Button(wallpaper.paused ? "Resume" : "Pause") { wallpaper.paused.toggle() }.buttonStyle(PixelButtonStyle())
                     Button("Turn Off") { wallpaper.stop() }.buttonStyle(PixelButtonStyle())
                 }
             }
+            if let update = updates.available {
+                statusRow(title: "Update", value: "Applarchy \(update.version) is available") {
+                    Button("Download…") { NSWorkspace.shared.open(update.url) }.buttonStyle(PixelButtonStyle())
+                }
+            }
+        }
+    }
+
+    private var wallpaperStatus: String {
+        guard let config = wallpaper.config else { return "Off" }
+        if wallpaper.paused { return config.summary + " (paused)" }
+        if let reason = wallpaper.powerPause { return config.summary + " (paused: \(reason))" }
+        return config.summary
+    }
+
+    // MARK: options
+
+    private var options: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            optionRow("Logo") {
+                PixelSegmented(selection: Binding(
+                    get: { draft.logo },
+                    set: { new in
+                        if new == "custom" && draft.customLogo == nil { editingLogo = true } else { draft.logo = new }
+                    }), options: [
+                    ("apple-small", EffectConfig.logoTitle("apple-small")),
+                    ("apple", EffectConfig.logoTitle("apple")),
+                    ("custom", EffectConfig.logoTitle("custom")),
+                ])
+                .frame(width: 470)
+                if draft.logo == "custom" {
+                    Button("Edit…") { editingLogo = true }.buttonStyle(PixelButtonStyle())
+                }
+            }
+            optionRow("Theme") {
+                HStack(spacing: 6) {
+                    ForEach(Themes.all) { theme in
+                        ThemeSwatch(theme: theme, selected: draft.theme == theme.id) { draft.theme = theme.id }
+                    }
+                }
+                Text(Themes.named(draft.theme).name).foregroundStyle(.secondary)
+            }
+            optionRow("Clock") {
+                Toggle("Show", isOn: $draft.showClock).toggleStyle(PixelCheckboxStyle())
+                Group {
+                    Toggle("Date", isOn: $draft.showDate).toggleStyle(PixelCheckboxStyle())
+                    PixelSegmented(selection: $draft.hourCycle, options: [("auto", "AUTO"), ("12", "12H"), ("24", "24H")])
+                        .frame(width: 200)
+                    PixelSegmented(selection: Binding(get: { draft.clockLarge ? "large" : "small" },
+                                                      set: { draft.clockLarge = $0 == "large" }),
+                                   options: [("small", "SMALL"), ("large", "LARGE")])
+                        .frame(width: 170)
+                }
+                .disabled(!draft.showClock)
+                .opacity(draft.showClock ? 1 : 0.35)
+            }
+            optionRow("Wallpaper") {
+                PixelSegmented(selection: Binding(get: { "\(wallpaper.options.fps)" },
+                                                  set: { wallpaper.options.fps = Int($0) ?? 30 }),
+                               options: [("30", "30 FPS"), ("15", "15 FPS")])
+                    .frame(width: 190)
+                Toggle("Pause on battery", isOn: $wallpaper.options.pauseOnBattery).toggleStyle(PixelCheckboxStyle())
+                Toggle("Pause in Low Power Mode", isOn: $wallpaper.options.pauseInLowPowerMode).toggleStyle(PixelCheckboxStyle())
+            }
+        }
+    }
+
+    private func optionRow<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(spacing: 12) {
+            Text(title.uppercased()).foregroundStyle(.secondary).frame(width: 90, alignment: .leading)
+            content()
+            Spacer(minLength: 0)
         }
     }
 
@@ -212,8 +283,17 @@ struct ContentView: View {
 /// A live preview: the same view the screensaver and wallpaper use.
 struct PreviewView: NSViewRepresentable {
     let effects: [String]
-    let logo: String
-    let showClock: Bool
+    var config = EffectConfig.default
+
+    init(effects: [String], config: EffectConfig) {
+        self.effects = effects
+        self.config = config
+    }
+
+    init(effects: [String], logo: String, showClock: Bool) {
+        self.effects = effects
+        config = EffectConfig(effects: effects, logo: logo, showClock: showClock)
+    }
 
     func makeNSView(context: Context) -> StudioEffectView {
         let view = StudioEffectView(frame: NSRect(x: 0, y: 0, width: 560, height: 350), isPreview: true)!
@@ -223,7 +303,8 @@ struct PreviewView: NSViewRepresentable {
     }
 
     func updateNSView(_ view: StudioEffectView, context: Context) {
-        guard view.effectCommands != effects || view.logoName != logo || view.showsClock != showClock else { return }
+        guard view.effectCommands != effects || view.logoName != config.logo || view.showsClock != config.showClock
+                || view.themeID != config.theme || view.clockStyle != config.clockStyle || view.customLogoText != config.customLogo else { return }
         view.stopAnimation()
         configure(view)
         view.startAnimation()
@@ -233,9 +314,11 @@ struct PreviewView: NSViewRepresentable {
 
     private func configure(_ view: StudioEffectView) {
         view.effectCommands = effects
-        view.logoName = logo
-        view.showsClock = showClock
-        view.logoRegionTop = showClock ? 171.0 / 982.0 : 0
+        view.customLogoText = config.customLogo
+        view.logoName = config.logo
+        view.showsClock = config.showClock
+        view.clockStyle = config.clockStyle
+        view.themeID = config.theme
         view.holdSeconds = 1.5
         view.followsScreensaverStop = false
         // Offscreen image at Retina scale: far cheaper than redrawing the window. (Window

@@ -14,8 +14,14 @@ final class ApplarchySaverView: ScreenSaverView {
     /// options ("thunderstorm --storm-time 600").
     var effectCommands: [String] = ApplarchySaverView.effects { didSet { playlist = [] } }
     var showsClock = true
+    var clockStyle = ClockStyle()
+    /// A theme from Themes (colours of the effects, background and clock).
+    var themeID = "omarchy"
+    /// Fall back to gentle effects when macOS's Reduce Motion is on.
+    var respectsReduceMotion = true
     /// The logo is centred between this fraction of the screen height and the bottom.
-    var logoRegionTop: CGFloat = 171.0 / 982.0
+    /// nil: just below the clock (or the whole screen without one).
+    var logoRegionTop: CGFloat?
     var holdSeconds = 2.0                // pause on the finished logo
     var maxEngineFrames = 30_000         // safety cap for endless effects
     /// Restart the effect when the system screensaver stops (macOS also sends this on lock).
@@ -53,8 +59,11 @@ final class ApplarchySaverView: ScreenSaverView {
     private var cells: [Cell] = []
     private var glyphCache: [UInt32: (CTFont, CGGlyph)] = [:]
     /// Logo file in the bundle's Resources, without ".txt".
-    var logoName = "screensaver" { didSet { logo = Self.loadLogo(named: logoName) } }
-    private lazy var logo: String = Self.loadLogo(named: logoName)
+    var logoName = "screensaver" { didSet { logo = currentLogo() } }
+    /// Text art used when logoName is "custom".
+    var customLogoText: String? { didSet { if logoName == "custom" { logo = currentLogo() } } }
+    private lazy var logo: String = currentLogo()
+    private var theme: Theme { Themes.named(themeID) }
 
     private struct Cell: Equatable { var scalar: UInt32 = 32; var fg: UInt32 = 0xC0C0C0; var bg: UInt32 = 0xFFFF_FFFF }
     private var previous: [Cell] = []
@@ -134,10 +143,19 @@ final class ApplarchySaverView: ScreenSaverView {
         invalidateAll()
     }
 
+    /// Effects that stay calm (no flying, exploding or flashing characters).
+    private static let gentleEffects: Set<String> = ["colorshift", "expand", "highlight", "middleout", "print", "randomsequence", "sweep", "wipe"]
+
     private func nextEffectName() -> String {
         if let forced = ProcessInfo.processInfo.environment["OMARCHY_EFFECT"] { return forced }  // testing
+        var pool = effectCommands
+        if respectsReduceMotion && NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            pool = pool.filter { Self.gentleEffects.contains(String($0.split(separator: " ").first ?? "")) }
+            if pool.isEmpty { pool = ["highlight", "colorshift", "wipe"] }
+            playlist.removeAll { !pool.contains($0) }
+        }
         if playlist.isEmpty {
-            playlist = effectCommands.shuffled()
+            playlist = pool.shuffled()
             if playlist.count > 1, playlist.first == lastEffect { playlist.swapAt(0, playlist.count - 1) }
         }
         lastEffect = playlist.removeFirst()
@@ -150,7 +168,7 @@ final class ApplarchySaverView: ScreenSaverView {
         let height = Int32(rows + logoLayout().extra)   // rows past the screen are never drawn
         let seed = UInt64.random(in: 1...UInt64.max)
         // Fall back to a random pick if a named effect can't be built.
-        let name = nextEffectName()
+        let name = theme.command(for: nextEffectName())
         saver = text.withCString { t in name.withCString { ttfx_saver_new_named(t, Int32(cols), height, seed, $0) } }
             ?? text.withCString { ttfx_saver_new($0, Int32(cols), height, seed) }
         os_log("effect %{public}@ %{public}@", log: Self.log, type: .default, name, saver == nil ? "FAILED" : "ok")
@@ -165,7 +183,7 @@ final class ApplarchySaverView: ScreenSaverView {
 
     override func animateOneFrame() {
         if showsClock {
-            let now = PixelClock.timeString()
+            let now = PixelClock.timeString(clockStyle)
             if now != clockText { clockText = now; invalidateAll() }
         }
         if holdRemaining > 0 {
@@ -334,7 +352,8 @@ final class ApplarchySaverView: ScreenSaverView {
         ctx.saveGState()
         defer { ctx.restoreGState() }
         ctx.clip(to: rect)
-        ctx.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 1))
+        let bg = theme.background
+        ctx.setFillColor(CGColor(red: CGFloat(bg >> 16 & 0xFF) / 255, green: CGFloat(bg >> 8 & 0xFF) / 255, blue: CGFloat(bg & 0xFF) / 255, alpha: 1))
         ctx.fill(rect)
         guard !cells.isEmpty else { return }
         ctx.textMatrix = .identity
@@ -368,7 +387,9 @@ final class ApplarchySaverView: ScreenSaverView {
         }
         // The clock sits midway between the top of the screen and the top of the logo.
         if showsClock {
-            PixelClock.draw(in: bounds, top: round((logoTop - PixelClock.height(in: bounds)) / 2), ctx)
+            var style = clockStyle
+            style.color = theme.foreground
+            PixelClock.draw(in: bounds, top: round((logoTop - PixelClock.height(in: bounds, style: clockStyle)) / 2), style: style, ctx)
         }
     }
 
@@ -424,7 +445,12 @@ final class ApplarchySaverView: ScreenSaverView {
 
     // MARK: logo
 
-    private var logoCentre: CGFloat { (bounds.height * logoRegionTop + bounds.height) / 2 }
+    private var logoCentre: CGFloat {
+        // Below the clock: the clock block plus 38 pt of margin (on a 982 pt screen).
+        let top = logoRegionTop.map { bounds.height * $0 }
+            ?? (showsClock ? 38 * bounds.height / 982 + PixelClock.height(in: bounds, style: clockStyle) : 0)
+        return (top + bounds.height) / 2
+    }
 
     /// ttfx centres the logo in its canvas (top row = floor(height / 2) - ceil(lines / 2)).
     /// Giving it a canvas `extra` rows taller than the screen, and showing only the
@@ -451,6 +477,11 @@ final class ApplarchySaverView: ScreenSaverView {
 
     /// The built-in logos are drawn from the system font at runtime (see LogoArt);
     /// any other name is read from Resources/<name>.txt.
+    private func currentLogo() -> String {
+        if logoName == "custom", let text = customLogoText, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return text }
+        return Self.loadLogo(named: logoName == "custom" ? "apple-small" : logoName)
+    }
+
     private static func loadLogo(named name: String) -> String {
         if let art = LogoArt.text(named: name) { return art }
         let resources = Bundle(for: ApplarchySaverView.self).resourceURL
@@ -471,15 +502,14 @@ final class ApplarchySaverView: ScreenSaverView {
         guard let url = Bundle(for: ApplarchySaverView.self).resourceURL?.appendingPathComponent("config.json"),
               let data = try? Data(contentsOf: url),
               let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
-        if let effects = config["effects"] as? [String], !effects.isEmpty, effects != effectCommands {
-            effectCommands = effects
-            playlist = []
-        }
+        if let effects = config["effects"] as? [String], !effects.isEmpty, effects != effectCommands { effectCommands = effects }
+        if let text = config["customLogo"] as? String { customLogoText = text }
         if let name = config["logo"] as? String, name != logoName { logoName = name }
-        if let clock = config["showClock"] as? Bool {
-            showsClock = clock
-            logoRegionTop = clock ? 171.0 / 982.0 : 0
-        }
+        if let clock = config["showClock"] as? Bool { showsClock = clock }
+        if let theme = config["theme"] as? String { themeID = theme }
+        if let cycle = config["hourCycle"] as? String { clockStyle.hourCycle = cycle }
+        if let date = config["showDate"] as? Bool { clockStyle.showDate = date }
+        if let large = config["clockLarge"] as? Bool { clockStyle.large = large }
     }
 
     override var hasConfigureSheet: Bool { false }

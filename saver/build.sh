@@ -3,13 +3,18 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 VERSION=$(cat ../VERSION)
-(cd ../engine && cargo build --release --lib --quiet)
+source ../scripts/engine.sh
 OUT=build/Applarchy.saver/Contents
 rm -rf build && mkdir -p "$OUT/MacOS" "$OUT/Resources"
-swiftc -O -module-name ApplarchySaverView -target arm64-apple-macos13 \
-  -import-objc-header ttfx.h ApplarchySaverView.swift PixelClock.swift LogoArt.swift ../engine/target/release/libttfx.a \
-  -framework ScreenSaver -framework AppKit -framework CoreText \
-  -Xlinker -bundle -o "$OUT/MacOS/ApplarchySaverView" 2>&1 | { grep -v '^ld: warning' || true; }
+SLICES=$(mktemp -d)
+for arch in $ARCHS; do
+  swiftc -O -module-name ApplarchySaverView -target "$arch-apple-macos13" \
+    -import-objc-header ttfx.h ApplarchySaverView.swift PixelClock.swift LogoArt.swift Themes.swift "$ENGINE_LIB" \
+    -framework ScreenSaver -framework AppKit -framework CoreText \
+    -Xlinker -bundle -o "$SLICES/$arch" 2>&1 | { grep -v '^ld: warning' || true; }
+done
+lipo -create "$SLICES"/* -output "$OUT/MacOS/ApplarchySaverView"
+rm -rf "$SLICES"
 cat > "$OUT/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

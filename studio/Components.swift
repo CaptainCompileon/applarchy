@@ -185,6 +185,8 @@ struct PixelSegmented: View {
                 Button { selection = options[i].tag } label: {
                     Text(options[i].title)
                         .font(Pixel.body)
+                        .lineLimit(1)
+                        .fixedSize()
                         .foregroundStyle(on ? Color.black : Color.white.opacity(0.85))
                         .padding(.horizontal, 12).padding(.vertical, 6)
                         .frame(maxWidth: .infinity)

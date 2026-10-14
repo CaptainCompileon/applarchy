@@ -26,8 +26,9 @@ fn effect_names() -> Vec<String> {
         .collect()
 }
 
-/// `command` is an effect name, optionally followed by that effect's options
-/// ("thunderstorm --storm-time 600").
+/// `command` is `[global options] effect [effect options]`, e.g.
+/// "--terminal-background-color 1a1b26 thunderstorm --storm-time 600 --final-gradient-stops 7aa2f7 bb9af7".
+/// Global options are the `--name value` pairs before the effect name.
 fn build(text: &str, width: i32, height: i32, command: &str, rng: Rng) -> Option<Saver> {
     let (w, h) = (width.to_string(), height.to_string());
     let mut args: Vec<&str> = vec![
@@ -35,8 +36,13 @@ fn build(text: &str, width: i32, height: i32, command: &str, rng: Rng) -> Option
         "--anchor-canvas", "c", "--anchor-text", "c",
         "--ignore-terminal-dimensions", "--frame-rate", "120",
     ];
-    args.extend(command.split_whitespace());
-    let name = *args.get(12)?;
+    let tokens: Vec<&str> = command.split_whitespace().collect();
+    let mut i = 0;
+    while i + 1 < tokens.len() && tokens[i].starts_with("--") {
+        i += 2;
+    }
+    let name = *tokens.get(i)?;
+    args.extend(&tokens);
     let cli = Cli::try_parse_from(args).ok()?;
     let config = cli.terminal_config();
     let mut effect = crate::fx::effects::build(cli.effect.as_ref()?)?;
