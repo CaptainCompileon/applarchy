@@ -78,7 +78,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     private func buildStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = NSImage(systemSymbolName: "cloud.bolt.rain", accessibilityDescription: "Applarchy")
+        statusItem.button?.image = PixelIcon.storm.templateImage()
+        statusItem.button?.image?.accessibilityDescription = "Applarchy"
         let menu = NSMenu()
         menu.delegate = self
         statusItem.menu = menu

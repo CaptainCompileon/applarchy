@@ -40,6 +40,8 @@ real macOS screensaver and as a live desktop wallpaper, with the effect engine c
 - **Choose your vibe** — *Chill Guy* (small logo) or *Apple Evangelist* (big logo).
 - **Live preview** of any effect, a quick first-run tour, and a ⛈ menu bar item to pause or stop the
   wallpaper.
+- **Pixel-perfect UI** — one pixel typeface, square controls and hard shadows throughout, to match
+  the effects.
 
 ## Screenshots
 
