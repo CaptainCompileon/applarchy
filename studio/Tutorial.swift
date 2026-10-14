@@ -30,8 +30,9 @@ struct TutorialOverlay: View {
                 .onTapGesture {}                       // swallow clicks behind the card
             card
                 .frame(width: 600)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(.white.opacity(0.12)))
+                .background(Color(white: 0.09))
+                .overlay(Rectangle().strokeBorder(Color.white.opacity(0.85), lineWidth: 2))
+                .background(Rectangle().fill(Color.white.opacity(0.22)).offset(x: 6, y: 6))   // hard pixel shadow
                 .shadow(color: .black.opacity(0.45), radius: 40, y: 18)
         }
         .font(Pixel.body)
@@ -48,7 +49,8 @@ struct TutorialOverlay: View {
             }
             .frame(height: 310)
             .frame(maxWidth: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .clipped()
+            .overlay(Rectangle().strokeBorder(Color.white.opacity(0.15), lineWidth: 1.5))
             .padding([.horizontal, .top], 20)
 
             VStack(alignment: .leading, spacing: 8) {
@@ -65,15 +67,15 @@ struct TutorialOverlay: View {
             .padding(.horizontal, 24).padding(.top, 18)
 
             HStack {
-                Button("Skip") { close() }
-                    .buttonStyle(.plain).foregroundStyle(.secondary)
+                Button("SKIP") { close() }
+                    .buttonStyle(PixelLinkStyle())
                     .keyboardShortcut(.cancelAction)
                     .opacity(page == steps.count - 1 ? 0 : 1)
                 Spacer()
                 HStack(spacing: 7) {
                     ForEach(steps.indices, id: \.self) { i in
                         Rectangle()
-                            .fill(i == page ? AnyShapeStyle(Color.white) : AnyShapeStyle(.quaternary))
+                            .fill(Color.white.opacity(i == page ? 1 : 0.25))
                             .frame(width: i == page ? 20 : 6, height: 6)
                             .onTapGesture { go(to: i) }
                     }
@@ -91,7 +93,7 @@ struct TutorialOverlay: View {
                         .buttonStyle(PixelPressStyle(shadow: 3, hovering: false))
                     }
                     Button { page == steps.count - 1 ? close() : go(to: page + 1) } label: {
-                        Text((page == steps.count - 1 ? "Get Started" : "Next") + " ▶")
+                        Text((page == steps.count - 1 ? "GET STARTED" : "NEXT") + " ▶")
                             .font(Pixel.body)
                             .foregroundStyle(.black)
                             .padding(.horizontal, 16).padding(.vertical, 8)
@@ -135,7 +137,7 @@ private struct StepPicture: View {
         switch picture {
         case .live:
             PreviewView(effects: ["beams", "decrypt", "fireworks", "laseretch", "thunderstorm"], logo: "apple-small", showClock: false)
-                .overlay(alignment: .bottomLeading) { Badge(text: "LIVE", icon: "dot.radiowaves.left.and.right").padding(12) }
+                .overlay(alignment: .bottomLeading) { Badge(text: "● LIVE").padding(12) }
         case .list:
             ListIllustration()
         case let .pair(left, right):
@@ -158,8 +160,7 @@ struct Shot: View {
         VStack(spacing: 10) {
             PreviewView(effects: effects, logo: logo, showClock: clock)
                 .aspectRatio(16.0 / 10.0, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(.white.opacity(0.15)))
+                .overlay(Rectangle().strokeBorder(Color.white.opacity(0.2), lineWidth: 1.5))
                 .shadow(color: .black.opacity(0.5), radius: 10, y: 4)
             Text(title.uppercased()).font(Pixel.body).foregroundStyle(.white)
         }
@@ -169,14 +170,13 @@ struct Shot: View {
 
 private struct Badge: View {
     let text: String
-    let icon: String
     var body: some View {
-        Label(text, systemImage: icon)
+        Text(text)
             .font(Pixel.body)
             .foregroundStyle(.white)
-            .padding(.horizontal, 9).padding(.vertical, 5)
-            .background(.black.opacity(0.55), in: Capsule())
-            .overlay(Capsule().strokeBorder(.white.opacity(0.2)))
+            .padding(.horizontal, 8).padding(.vertical, 4)
+            .background(Color.black.opacity(0.7))
+            .overlay(Rectangle().strokeBorder(Color.white.opacity(0.6), lineWidth: 1.5))
     }
 }
 
@@ -192,27 +192,24 @@ private struct ListIllustration: View {
                 ForEach(rows.indices, id: \.self) { i in
                     let (name, on, playing) = rows[i]
                     HStack(spacing: 10) {
-                        Image(systemName: on ? "checkmark.square.fill" : "square")
-                            .font(.system(size: 15))
-                            .foregroundStyle(on ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.white.opacity(0.4)))
-                        Text(name).font(Pixel.body).foregroundStyle(playing ? Color.white : Color.white.opacity(0.8))
+                        PixelCheckbox(on: on, ink: playing ? .black : .white)
+                        Text(name).font(Pixel.body).foregroundStyle(playing ? Color.black : Color.white.opacity(0.85))
                         Spacer()
-                        if playing { Image(systemName: "play.fill").font(.system(size: 10)).foregroundStyle(Color.accentColor) }
+                        if playing { Text("▶").font(Pixel.body).foregroundStyle(.black) }
                     }
                     .padding(.horizontal, 12).padding(.vertical, 8)
-                    .background(playing ? Color.accentColor.opacity(0.18) : .clear, in: RoundedRectangle(cornerRadius: 6))
+                    .background(playing ? Color.white : Color.clear)
                 }
             }
             .padding(8)
             .frame(width: 210)
-            .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.white.opacity(0.1)))
+            .background(Color.white.opacity(0.04))
+            .overlay(Rectangle().strokeBorder(Color.white.opacity(0.2), lineWidth: 1.5))
 
             VStack(spacing: 8) {
                 PreviewView(effects: ["matrix"], logo: "apple-small", showClock: true)
                     .aspectRatio(16.0 / 10.0, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.white.opacity(0.15)))
+                    .overlay(Rectangle().strokeBorder(Color.white.opacity(0.2), lineWidth: 1.5))
                     .shadow(color: .black.opacity(0.5), radius: 10, y: 4)
                 Text("Click a name to preview it").font(Pixel.body).foregroundStyle(.white.opacity(0.7))
             }

@@ -100,6 +100,26 @@ enum PixelIcon {
     }
 }
 
+extension PixelIcon {
+    /// The icon as a template image (for the menu bar), one square per pixel.
+    func templateImage(points: CGFloat = 18) -> NSImage {
+        let grid = rows
+        let image = NSImage(size: NSSize(width: points, height: points), flipped: true) { rect in
+            let px = floor(rect.width / CGFloat(grid.count) * 2) / 2
+            let o = (rect.width - px * CGFloat(grid.count)) / 2
+            NSColor.black.setFill()
+            for (r, row) in grid.enumerated() {
+                for (c, ch) in row.enumerated() where ch == "#" {
+                    NSRect(x: o + CGFloat(c) * px, y: o + CGFloat(r) * px, width: px, height: px).fill()
+                }
+            }
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }
+}
+
 struct PixelIconView: View {
     let icon: PixelIcon
     let color: Color
@@ -179,5 +199,98 @@ struct PixelSegmented: View {
         .overlay(Rectangle().strokeBorder(Color.white.opacity(0.85), lineWidth: 1.5))
         .background(Rectangle().fill(Color.white.opacity(0.28)).offset(x: 2, y: 2))
         .padding(.trailing, 2).padding(.bottom, 2)
+    }
+}
+
+/// Pixel checkbox: a 14 pt square with a 1.5 pt border, filled with a solid
+/// inner square when on. `ink` is the colour on its background (white on dark,
+/// black on an inverted row).
+struct PixelCheckbox: View {
+    let on: Bool
+    var ink: Color = .white
+    var body: some View {
+        ZStack {
+            Rectangle().strokeBorder(ink.opacity(0.85), lineWidth: 1.5)
+            if on { Rectangle().fill(ink).padding(3.5) }
+        }
+        .frame(width: 14, height: 14)
+    }
+}
+
+struct PixelCheckboxStyle: ToggleStyle {
+    var ink: Color = .white
+    func makeBody(configuration: Configuration) -> some View {
+        Button { configuration.isOn.toggle() } label: {
+            HStack(spacing: 8) {
+                PixelCheckbox(on: configuration.isOn, ink: ink)
+                configuration.label
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// Text-only button that inverts on hover ("SKIP", "?").
+struct PixelLinkStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View { PixelLinkBody(configuration: configuration) }
+}
+
+private struct PixelLinkBody: View {
+    let configuration: ButtonStyleConfiguration
+    @State private var hovering = false
+    var body: some View {
+        configuration.label
+            .font(Pixel.body)
+            .foregroundStyle(hovering ? Color.black : Color.secondary)
+            .padding(.horizontal, 6).padding(.vertical, 3)
+            .background(hovering ? Color.white : Color.clear)
+            .onHover { hovering = $0 }
+    }
+}
+
+/// A vertical scroll view with a thin, square, monochrome scroll bar in place of
+/// the system one.
+struct PixelScrollView<Content: View>: View {
+    @ViewBuilder var content: Content
+    @State private var offset: CGFloat = 0
+    @State private var contentHeight: CGFloat = 0
+
+    var body: some View {
+        GeometryReader { outer in
+            ScrollView(.vertical, showsIndicators: false) {
+                content.background(GeometryReader { g in
+                    Color.clear.preference(key: ScrollMetrics.self,
+                                           value: ScrollMetrics.Value(offset: -g.frame(in: .named("pixelScroll")).minY, height: g.size.height))
+                })
+            }
+            .coordinateSpace(name: "pixelScroll")
+            .onPreferenceChange(ScrollMetrics.self) { offset = $0.offset; contentHeight = $0.height }
+            .overlay(alignment: .topTrailing) { thumb(viewport: outer.size.height) }
+        }
+    }
+
+    @ViewBuilder private func thumb(viewport h: CGFloat) -> some View {
+        if contentHeight > h + 1 {
+            let size = max(28, h * h / contentHeight)
+            let y = (h - size) * min(1, max(0, offset / (contentHeight - h)))
+            Rectangle().fill(Color.white.opacity(0.5))
+                .frame(width: 3, height: size)
+                .offset(x: -2, y: y)
+                .allowsHitTesting(false)
+        }
+    }
+}
+
+private struct ScrollMetrics: PreferenceKey {
+    struct Value: Equatable { var offset: CGFloat = 0; var height: CGFloat = 0 }
+    static var defaultValue = Value()
+    static func reduce(value: inout Value, nextValue: () -> Value) { value = nextValue() }
+}
+
+extension View {
+    /// No blue focus rings anywhere (macOS 14+; earlier systems keep theirs).
+    @ViewBuilder func noFocusRing() -> some View {
+        if #available(macOS 14, *) { focusEffectDisabled() } else { self }
     }
 }
