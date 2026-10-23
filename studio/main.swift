@@ -38,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1040, height: 840),
                              styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
             w.title = "Applarchy"
+            w.appearance = NSAppearance(named: .darkAqua)   // the pixel UI is drawn in white ink: always dark
             w.isReleasedWhenClosed = false
             w.delegate = self
             w.contentView = NSHostingView(rootView: ContentView().environmentObject(Wallpaper.shared))
