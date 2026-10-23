@@ -194,8 +194,10 @@ final class ApplarchySaverView: ScreenSaverView {
         guard let saver else { startEffect(); return }
         var frame: UnsafePointer<UInt8>?
         var len = 0
+        var finished = false
         for _ in 0..<engineFramesPerTick {
-            guard let next = ttfx_saver_next(saver, &len) else { frame = nil; break }
+            // A null return leaves the last frame (and len) intact: still draw it.
+            guard let next = ttfx_saver_next(saver, &len) else { finished = true; break }
             frame = next
             engineFrames += 1
         }
@@ -205,7 +207,7 @@ final class ApplarchySaverView: ScreenSaverView {
             parse(UnsafeBufferPointer(start: frame, count: len))
             invalidateChangedCells()
         }
-        if frame == nil || engineFrames >= maxEngineFrames {
+        if finished || engineFrames >= maxEngineFrames {
             endEffect()
             holdRemaining = holdTicks
         }

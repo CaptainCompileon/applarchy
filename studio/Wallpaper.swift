@@ -78,7 +78,10 @@ final class Wallpaper: NSObject, ObservableObject {
 
     @objc private func rebuild() {
         views.forEach { $0.stopAnimation() }
-        windows.forEach { $0.orderOut(nil) }
+        for window in windows {
+            NotificationCenter.default.removeObserver(self, name: NSWindow.didChangeOcclusionStateNotification, object: window)
+            window.orderOut(nil)
+        }
         windows = []
         views = []
         guard let config else { return }
