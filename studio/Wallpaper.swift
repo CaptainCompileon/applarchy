@@ -134,7 +134,7 @@ final class Wallpaper: NSObject, ObservableObject {
 
 /// Start at login (in the background) while a wallpaper is set, via a LaunchAgent.
 enum LoginItem {
-    static let label = "com.applarchy.app"
+    static let label = AppIdentity.id
     static var plist: URL { FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/LaunchAgents/\(label).plist") }
 
     static func set(enabled: Bool) {

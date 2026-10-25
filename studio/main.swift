@@ -17,12 +17,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             snapshot(to: CommandLine.arguments[i + 1])     // testing: render the window offscreen
             return
         }
-        migrateEarlierVersions()
+        if !AppIdentity.isDev {          // a dev build leaves earlier installs and update notices to the released app
+            migrateEarlierVersions()
+            Updates.shared.start()
+        }
         Wallpaper.shared.restore()
-        Updates.shared.start()
         buildMainMenu()
         buildStatusItem()
-        DistributedNotificationCenter.default().addObserver(self, selector: #selector(showWindow), name: .init("com.applarchy.app.show"), object: nil)
+        DistributedNotificationCenter.default().addObserver(self, selector: #selector(showWindow), name: .init(AppIdentity.id + ".show"), object: nil)
         if !background { showWindow() }
     }
 
@@ -37,7 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if window == nil {
             let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1040, height: 840),
                              styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-            w.title = "Applarchy"
+            w.title = AppIdentity.title
             w.isReleasedWhenClosed = false
             w.delegate = self
             w.contentView = NSHostingView(rootView: ContentView().environmentObject(Wallpaper.shared))
@@ -65,7 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let main = NSMenu()
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "Quit Applarchy", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: "Quit \(AppIdentity.name)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
         main.addItem(appItem)
         let windowItem = NSMenuItem()
@@ -80,7 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private func buildStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = PixelIcon.storm.templateImage()
-        statusItem.button?.image?.accessibilityDescription = "Applarchy"
+        statusItem.button?.image?.accessibilityDescription = AppIdentity.name
         let menu = NSMenu()
         menu.delegate = self
         statusItem.menu = menu
@@ -88,7 +90,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
-        menu.addItem(item("Open Applarchy…", #selector(showWindow)))
+        menu.addItem(item("Open \(AppIdentity.name)…", #selector(showWindow)))
         menu.addItem(item("Show Tutorial…", #selector(showTutorial)))
         menu.addItem(.separator())
         let wp = Wallpaper.shared
@@ -104,7 +106,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             menu.addItem(item("Update Available: Applarchy \(update.version)…", #selector(openUpdate)))
         }
         menu.addItem(.separator())
-        menu.addItem(item("Quit Applarchy", #selector(NSApplication.terminate(_:)), target: NSApp))
+        menu.addItem(item("Quit \(AppIdentity.name)", #selector(NSApplication.terminate(_:)), target: NSApp))
     }
 
     private func item(_ title: String, _ action: Selector, target: AnyObject? = nil) -> NSMenuItem {
@@ -221,7 +223,7 @@ let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bund
     .filter { $0.processIdentifier != getpid() }
 if !others.isEmpty && !CommandLine.arguments.contains("--snapshot") && !CommandLine.arguments.contains("--window-snapshot") {
     if !CommandLine.arguments.contains("--background") {
-        DistributedNotificationCenter.default().postNotificationName(.init("com.applarchy.app.show"), object: nil, userInfo: nil, deliverImmediately: true)
+        DistributedNotificationCenter.default().postNotificationName(.init(AppIdentity.id + ".show"), object: nil, userInfo: nil, deliverImmediately: true)
     }
     exit(0)
 }
