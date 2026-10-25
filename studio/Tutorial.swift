@@ -30,9 +30,10 @@ struct TutorialOverlay: View {
                 .onTapGesture {}                       // swallow clicks behind the card
             card
                 .frame(width: 600)
-                .background(Color(white: 0.09))
-                .overlay(Rectangle().strokeBorder(Color.white.opacity(0.85), lineWidth: 2))
-                .background(Rectangle().fill(Color.white.opacity(0.22)).offset(x: 6, y: 6))   // hard pixel shadow
+                .background(Color.surface(0.09))
+                .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.85), lineWidth: 2))
+                .background(Rectangle().fill(Color.ink.opacity(0.22)).offset(x: 6, y: 6))   // hard pixel shadow
+                .compositingGroup()                    // one soft shadow for the card, not one per element inside it
                 .shadow(color: .black.opacity(0.45), radius: 40, y: 18)
         }
         .font(Pixel.body)
@@ -50,7 +51,7 @@ struct TutorialOverlay: View {
             .frame(height: 310)
             .frame(maxWidth: .infinity)
             .clipped()
-            .overlay(Rectangle().strokeBorder(Color.white.opacity(0.15), lineWidth: 1.5))
+            .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.15), lineWidth: 1.5))
             .padding([.horizontal, .top], 20)
 
             VStack(alignment: .leading, spacing: 8) {
@@ -75,7 +76,7 @@ struct TutorialOverlay: View {
                 HStack(spacing: 7) {
                     ForEach(steps.indices, id: \.self) { i in
                         Rectangle()
-                            .fill(Color.white.opacity(i == page ? 1 : 0.25))
+                            .fill(Color.ink.opacity(i == page ? 1 : 0.25))
                             .frame(width: i == page ? 20 : 6, height: 6)
                             .onTapGesture { go(to: i) }
                     }
@@ -85,19 +86,19 @@ struct TutorialOverlay: View {
                     if page > 0 {
                         Button { go(to: page - 1) } label: {
                             Text("◀").font(Pixel.body)
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Color.ink)
                                 .padding(.horizontal, 12).padding(.vertical, 8)
-                                .background(Color(white: 0.14))
-                                .overlay(Rectangle().strokeBorder(Color.white.opacity(0.8), lineWidth: 2))
+                                .background(Color.surface(0.14))
+                                .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.8), lineWidth: 2))
                         }
                         .buttonStyle(PixelPressStyle(shadow: 3, hovering: false))
                     }
                     Button { page == steps.count - 1 ? close() : go(to: page + 1) } label: {
                         Text((page == steps.count - 1 ? "GET STARTED" : "NEXT") + " ▶")
                             .font(Pixel.body)
-                            .foregroundStyle(.black)
+                            .foregroundStyle(Color.paper)
                             .padding(.horizontal, 16).padding(.vertical, 8)
-                            .background(Color.white)
+                            .background(Color.ink)
                     }
                     .buttonStyle(PixelPressStyle(shadow: 3, hovering: false))
                     .keyboardShortcut(.defaultAction)
