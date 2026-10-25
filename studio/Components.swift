@@ -1,5 +1,23 @@
 import SwiftUI
 
+/// The pixel UI's two inks, following the window's appearance: `ink` is white in
+/// Dark and black in Light, `paper` the opposite (text on an inverted, ink-filled
+/// control). `surface` is a control's fill: the given near-black grey in Dark,
+/// mirrored to a near-white one in Light.
+extension Color {
+    static let ink = Color(nsColor: .appearance(dark: .white, light: .black))
+    static let paper = Color(nsColor: .appearance(dark: .black, light: .white))
+    static func surface(_ level: CGFloat) -> Color {
+        Color(nsColor: .appearance(dark: NSColor(white: level, alpha: 1), light: NSColor(white: 1 - level / 2, alpha: 1)))
+    }
+}
+
+extension NSColor {
+    static func appearance(dark: NSColor, light: NSColor) -> NSColor {
+        NSColor(name: nil) { $0.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light }
+    }
+}
+
 /// A large call-to-action in the app's pixel style: near-black with a crisp
 /// border, square corners and a hard (unblurred) drop shadow, a pixel-art icon
 /// and a monospaced title. Hover inverts it; pressing pushes it into its shadow.
@@ -21,7 +39,7 @@ struct BigActionButton: View {
     }
 
     private var label: some View {
-        let ink: Color = hovering && isEnabled ? .black : .white
+        let ink: Color = hovering && isEnabled ? .paper : .ink
         return HStack(spacing: 14) {
             PixelIconView(icon: icon, color: ink).frame(width: 30, height: 30)
             VStack(alignment: .leading, spacing: 3) {
@@ -39,8 +57,8 @@ struct BigActionButton: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity)
-        .background(hovering && isEnabled ? Color.white : Color(white: 0.07))
-        .overlay(Rectangle().strokeBorder(Color.white.opacity(isEnabled ? 0.9 : 0.3), lineWidth: 2))
+        .background(hovering && isEnabled ? Color.ink : Color.surface(0.07))
+        .overlay(Rectangle().strokeBorder(Color.ink.opacity(isEnabled ? 0.9 : 0.3), lineWidth: 2))
         .opacity(isEnabled ? 1 : 0.4)
     }
 }
@@ -54,7 +72,7 @@ struct PixelPressStyle: ButtonStyle {
         return configuration.label
             .offset(x: pressed ? shadow : 0, y: pressed ? shadow : 0)
             .background(
-                Rectangle().fill(Color.white.opacity(hovering ? 0.55 : 0.28))
+                Rectangle().fill(Color.ink.opacity(hovering ? 0.55 : 0.28))
                     .offset(x: shadow, y: shadow)
             )
             .padding(.trailing, shadow).padding(.bottom, shadow)
@@ -160,12 +178,12 @@ private struct PixelButtonBody: View {
         let pressed = configuration.isPressed
         configuration.label
             .font(Pixel.body)
-            .foregroundStyle(lit ? Color.black : Color.white)
+            .foregroundStyle(lit ? Color.paper : Color.ink)
             .padding(.horizontal, 10).padding(.vertical, 5)
-            .background(lit ? Color.white : Color(white: 0.1))
-            .overlay(Rectangle().strokeBorder(Color.white.opacity(0.85), lineWidth: 1.5))
+            .background(lit ? Color.ink : Color.surface(0.1))
+            .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.85), lineWidth: 1.5))
             .offset(x: pressed ? 2 : 0, y: pressed ? 2 : 0)
-            .background(Rectangle().fill(Color.white.opacity(0.28)).offset(x: 2, y: 2))
+            .background(Rectangle().fill(Color.ink.opacity(0.28)).offset(x: 2, y: 2))
             .padding(.trailing, 2).padding(.bottom, 2)
             .opacity(isEnabled ? 1 : 0.4)
             .onHover { hovering = $0 }
@@ -187,29 +205,29 @@ struct PixelSegmented: View {
                         .font(Pixel.body)
                         .lineLimit(1)
                         .fixedSize()
-                        .foregroundStyle(on ? Color.black : Color.white.opacity(0.85))
+                        .foregroundStyle(on ? Color.paper : Color.ink.opacity(0.85))
                         .padding(.horizontal, 12).padding(.vertical, 6)
                         .frame(maxWidth: .infinity)
-                        .background(on ? Color.white : Color(white: 0.1))
+                        .background(on ? Color.ink : Color.surface(0.1))
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                if i < options.count - 1 { Rectangle().fill(Color.white.opacity(0.85)).frame(width: 1.5) }
+                if i < options.count - 1 { Rectangle().fill(Color.ink.opacity(0.85)).frame(width: 1.5) }
             }
         }
         .fixedSize(horizontal: false, vertical: true)
-        .overlay(Rectangle().strokeBorder(Color.white.opacity(0.85), lineWidth: 1.5))
-        .background(Rectangle().fill(Color.white.opacity(0.28)).offset(x: 2, y: 2))
+        .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.85), lineWidth: 1.5))
+        .background(Rectangle().fill(Color.ink.opacity(0.28)).offset(x: 2, y: 2))
         .padding(.trailing, 2).padding(.bottom, 2)
     }
 }
 
 /// Pixel checkbox: a 14 pt square with a 1.5 pt border, filled with a solid
-/// inner square when on. `ink` is the colour on its background (white on dark,
-/// black on an inverted row).
+/// inner square when on. `ink` is the colour on its background (`.ink`, or
+/// `.paper` on an inverted row).
 struct PixelCheckbox: View {
     let on: Bool
-    var ink: Color = .white
+    var ink: Color = .ink
     var body: some View {
         ZStack {
             Rectangle().strokeBorder(ink.opacity(0.85), lineWidth: 1.5)
@@ -220,7 +238,7 @@ struct PixelCheckbox: View {
 }
 
 struct PixelCheckboxStyle: ToggleStyle {
-    var ink: Color = .white
+    var ink: Color = .ink
     func makeBody(configuration: Configuration) -> some View {
         Button { configuration.isOn.toggle() } label: {
             HStack(spacing: 8) {
@@ -244,9 +262,9 @@ private struct PixelLinkBody: View {
     var body: some View {
         configuration.label
             .font(Pixel.body)
-            .foregroundStyle(hovering ? Color.black : Color.secondary)
+            .foregroundStyle(hovering ? Color.paper : Color.secondary)
             .padding(.horizontal, 6).padding(.vertical, 3)
-            .background(hovering ? Color.white : Color.clear)
+            .background(hovering ? Color.ink : Color.clear)
             .onHover { hovering = $0 }
     }
 }
@@ -276,7 +294,7 @@ struct PixelScrollView<Content: View>: View {
         if contentHeight > h + 1 {
             let size = max(28, h * h / contentHeight)
             let y = (h - size) * min(1, max(0, offset / (contentHeight - h)))
-            Rectangle().fill(Color.white.opacity(0.5))
+            Rectangle().fill(Color.ink.opacity(0.5))
                 .frame(width: 3, height: size)
                 .offset(x: -2, y: y)
                 .allowsHitTesting(false)

@@ -149,7 +149,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
 
     /// Testing/README: a real window placed off-screen, captured after the preview has
-    /// animated for a while. Selection from OMARCHY_SNAPSHOT ("effects;logo;clock;focus;tutorial;theme").
+    /// animated for a while. Selection from OMARCHY_SNAPSHOT ("effects;logo;clock;focus;tutorial;theme");
+    /// OMARCHY_SNAPSHOT_APPEARANCE=light renders the Light appearance (default: dark).
     private func windowSnapshot(to path: String) {
         let spec = (ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT"] ?? "").split(separator: ";", omittingEmptySubsequences: false).map(String.init)
         func field(_ i: Int) -> String { i < spec.count ? spec[i] : "" }
@@ -161,8 +162,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1040, height: 840),
                          styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         w.title = "Applarchy"
-        w.appearance = NSAppearance(named: .darkAqua)
-        w.backgroundColor = NSColor(white: 0.13, alpha: 1)
+        w.appearance = NSAppearance(named: ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT_APPEARANCE"] == "light" ? .aqua : .darkAqua)
+        w.backgroundColor = .appearance(dark: NSColor(white: 0.13, alpha: 1), light: .windowBackgroundColor)
         w.contentView = NSHostingView(rootView: content)
         w.setFrameOrigin(NSPoint(x: -6000, y: -6000))
         w.orderFrontRegardless()

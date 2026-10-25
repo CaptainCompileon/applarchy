@@ -28,7 +28,7 @@ struct ContentView: View {
         ZStack {
             HStack(spacing: 0) {
                 effectList.frame(width: 320)
-                Rectangle().fill(Color.white.opacity(0.12)).frame(width: 1)
+                Rectangle().fill(Color.ink.opacity(0.12)).frame(width: 1)
                 detail.padding(20)
             }
             if editingLogo {
@@ -45,7 +45,7 @@ struct ContentView: View {
         .frame(minWidth: 980, minHeight: 760)
         .background(Color(nsColor: .windowBackgroundColor))
         .font(Pixel.body)
-        .tint(.white)
+        .tint(.ink)
         .noFocusRing()
         .onAppear { if !tutorialSeen && !snapshotMode { withAnimation(.easeOut(duration: 0.3).delay(0.35)) { showTutorial = true } } }
         .onChange(of: showTutorial) { if !$0 && !snapshotMode { tutorialSeen = true } }
@@ -67,26 +67,26 @@ struct ContentView: View {
                 Button("NONE") { draft.effects = [] }.buttonStyle(PixelButtonStyle())
             }
             .padding([.horizontal, .top], 12).padding(.bottom, 10)
-            Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+            Rectangle().fill(Color.ink.opacity(0.12)).frame(height: 1)
             PixelScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(Catalog.effects) { effect in
                         effectRow(effect)
-                        Rectangle().fill(Color.white.opacity(0.08)).frame(height: 1)
+                        Rectangle().fill(Color.ink.opacity(0.08)).frame(height: 1)
                     }
                 }
             }
-            Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+            Rectangle().fill(Color.ink.opacity(0.12)).frame(height: 1)
             Text("\(draft.effects.count)/\(Catalog.effects.count) selected · click a name to preview")
                 .foregroundStyle(.secondary).padding(12)
         }
     }
 
     /// A flat row: pixel checkbox, name and description. The row being previewed
-    /// is inverted (white, black text); others tint faintly on hover.
+    /// is inverted (ink fill, paper text); others tint faintly on hover.
     private func effectRow(_ effect: EffectInfo) -> some View {
         let previewing = focused == effect.id
-        let ink: Color = previewing ? .black : .white
+        let ink: Color = previewing ? .paper : .ink
         return HStack(alignment: .top, spacing: 10) {
             Toggle("", isOn: selected(effect.id))
                 .toggleStyle(PixelCheckboxStyle(ink: ink)).labelsHidden()
@@ -100,7 +100,7 @@ struct ContentView: View {
         }
         .font(Pixel.body)
         .padding(.horizontal, 14).padding(.vertical, 9)
-        .background(previewing ? Color.white : (hovered == effect.id ? Color.white.opacity(0.06) : Color.clear))
+        .background(previewing ? Color.ink : (hovered == effect.id ? Color.ink.opacity(0.06) : Color.clear))
         .contentShape(Rectangle())
         .onTapGesture { focused = previewing ? nil : effect.id }
         .onHover { inside in
@@ -130,7 +130,7 @@ struct ContentView: View {
             PreviewView(effects: previewEffects, config: draft)
                 .aspectRatio(16.0 / 10.0, contentMode: .fit)
                 .frame(maxWidth: .infinity)
-                .overlay(Rectangle().strokeBorder(Color.white.opacity(0.25), lineWidth: 1.5))
+                .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.25), lineWidth: 1.5))
                 .layoutPriority(-1)
             Text(focused.map { id in "Previewing \(Catalog.effects.first { $0.id == id }!.title) — click it again to preview your selection" }
                  ?? (draft.effects.count == 1 ? "Previewing your selection" : "Previewing your selection in random order"))
@@ -158,7 +158,7 @@ struct ContentView: View {
                 Text(message).foregroundStyle(.secondary).lineSpacing(2).fixedSize(horizontal: false, vertical: true)
             }
 
-            Rectangle().fill(Color.white.opacity(0.12)).frame(height: 1)
+            Rectangle().fill(Color.ink.opacity(0.12)).frame(height: 1)
             statusRow(title: "Screensaver",
                       value: screensaver?.summary ?? (screensaverInstalled ? "Installed, all effects" : "Not installed")) {
                 Button("Screen Saver Settings…") { Screensaver.openSettings() }.buttonStyle(PixelButtonStyle())
