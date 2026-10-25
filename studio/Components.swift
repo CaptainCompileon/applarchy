@@ -314,3 +314,36 @@ extension View {
         if #available(macOS 14, *) { focusEffectDisabled() } else { self }
     }
 }
+
+/// One of the two modes, as a selectable pixel card: a pixel radio square, a title
+/// and one sentence on what it controls. The selected card is outlined in ink
+/// with a hard shadow.
+struct ModeCard: View {
+    let title: String
+    let selected: Bool
+    let detail: String
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(alignment: .top, spacing: 12) {
+                PixelCheckbox(on: selected).padding(.top, 3)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(title.uppercased()).font(Pixel.title).foregroundStyle(Color.ink)
+                    Text(detail).font(Pixel.body).foregroundStyle(Color.ink.opacity(selected ? 0.75 : 0.5))
+                        .lineSpacing(2).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Color.surface(selected ? 0.15 : (hovering ? 0.12 : 0.1)))
+            .overlay(Rectangle().strokeBorder(Color.ink.opacity(selected ? 0.9 : 0.22), lineWidth: selected ? 2 : 1.5))
+            .background(Rectangle().fill(Color.ink.opacity(selected ? 0.25 : 0)).offset(x: 4, y: 4))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+    }
+}
