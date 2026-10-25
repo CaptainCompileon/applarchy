@@ -21,8 +21,8 @@ struct ThemeSwatch: View {
                 HStack(spacing: 2) { ForEach(colors.indices, id: \.self) { Rectangle().fill(colors[$0]).frame(width: 5, height: 5) } }
             }
             .frame(width: 26, height: 26)
-            .overlay(Rectangle().strokeBorder(Color.white.opacity(selected ? 0.95 : (hovering ? 0.6 : 0.22)), lineWidth: selected ? 2 : 1))
-            .background(Rectangle().fill(Color.white.opacity(selected ? 0.3 : 0)).offset(x: 2, y: 2))
+            .overlay(Rectangle().strokeBorder(Color.ink.opacity(selected ? 0.95 : (hovering ? 0.6 : 0.22)), lineWidth: selected ? 2 : 1))
+            .background(Rectangle().fill(Color.ink.opacity(selected ? 0.3 : 0)).offset(x: 2, y: 2))
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
@@ -66,9 +66,9 @@ struct CustomLogoEditor: View {
             Color.black.opacity(0.55).ignoresSafeArea().onTapGesture {}
             card
                 .frame(width: 760)
-                .background(Color(white: 0.09))
-                .overlay(Rectangle().strokeBorder(Color.white.opacity(0.85), lineWidth: 2))
-                .background(Rectangle().fill(Color.white.opacity(0.22)).offset(x: 6, y: 6))
+                .background(Color.surface(0.09))
+                .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.85), lineWidth: 2))
+                .background(Rectangle().fill(Color.ink.opacity(0.22)).offset(x: 6, y: 6))
         }
         .font(Pixel.body)
     }
@@ -97,12 +97,12 @@ struct CustomLogoEditor: View {
                     .modifier(HiddenEditorBackground())
                     .padding(6)
                     .background(Color.black)
-                    .overlay(Rectangle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1.5))
+                    .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.3), lineWidth: 1.5))
                 VStack(alignment: .leading, spacing: 6) {
                     // Exactly how the screensaver will draw it (edits restart the preview).
                     PreviewView(effects: ["highlight"], config: previewConfig)
                         .aspectRatio(16.0 / 10.0, contentMode: .fit)
-                        .overlay(Rectangle().strokeBorder(Color.white.opacity(0.3), lineWidth: 1.5))
+                        .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.3), lineWidth: 1.5))
                     Text("PREVIEW").foregroundStyle(.secondary)
                 }
                 .frame(width: 300)
@@ -113,8 +113,8 @@ struct CustomLogoEditor: View {
                 Spacer()
                 Button("CANCEL") { isPresented = false }.buttonStyle(PixelLinkStyle()).keyboardShortcut(.cancelAction)
                 Button { use() } label: {
-                    Text("USE THIS LOGO ▶").font(Pixel.body).foregroundStyle(.black)
-                        .padding(.horizontal, 14).padding(.vertical, 7).background(Color.white)
+                    Text("USE THIS LOGO ▶").font(Pixel.body).foregroundStyle(Color.paper)
+                        .padding(.horizontal, 14).padding(.vertical, 7).background(Color.ink)
                 }
                 .buttonStyle(PixelPressStyle(shadow: 3, hovering: false))
                 .disabled(lines.isEmpty)
