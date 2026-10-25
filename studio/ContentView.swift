@@ -12,6 +12,8 @@ struct ContentView: View {
     @State private var screensaverInstalled = Screensaver.installed != nil
     @State private var message: String?
     @AppStorage("tutorialSeen") private var tutorialSeen = false
+    /// "smooth": one look for screensaver, lock screen and desktop; "custom": each set separately.
+    @AppStorage("mode") private var mode = "custom"
     @State private var showTutorial = false
     private let snapshotMode: Bool
 
@@ -21,6 +23,10 @@ struct ContentView: View {
         _focused = State(initialValue: snapshot?.focused)
         _showTutorial = State(initialValue: snapshot?.tutorial ?? false)
         _editingLogo = State(initialValue: snapshot != nil && ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT_EDITOR"] != nil)
+        if snapshot != nil, let store = UserDefaults(suiteName: "com.applarchy.app.snapshot") {   // screenshots: don't touch real settings
+            store.set(ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT_MODE"] ?? "custom", forKey: "mode")
+            _mode = AppStorage(wrappedValue: "custom", "mode", store: store)
+        }
         snapshotMode = snapshot != nil
     }
 
@@ -125,8 +131,25 @@ struct ContentView: View {
         return draft.effects.isEmpty ? Catalog.allIDs : draft.effects
     }
 
+    private var smoothActive: Bool { wallpaper.config?.smoothTransition == true }
+
+    private var modePicker: some View {
+        HStack(spacing: 12) {
+            ModeCard(title: "Smooth Mode", selected: mode == "smooth",
+                     detail: "One look everywhere: screensaver, lock screen and desktop. The animation carries on as you unlock and settles into the logo.") {
+                withAnimation(.easeOut(duration: 0.15)) { mode = "smooth" }
+            }
+            ModeCard(title: "Custom", selected: mode == "custom",
+                     detail: "Set the screensaver and the wallpaper separately, with every option.") {
+                withAnimation(.easeOut(duration: 0.15)) { mode = "custom" }
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)   // both cards as tall as the taller one
+    }
+
     private var detail: some View {
         VStack(alignment: .leading, spacing: 12) {
+            modePicker
             PreviewView(effects: previewEffects, config: draft)
                 .aspectRatio(16.0 / 10.0, contentMode: .fit)
                 .frame(maxWidth: .infinity)
@@ -138,11 +161,19 @@ struct ContentView: View {
 
             options
 
-            HStack(spacing: 12) {
-                BigActionButton(title: "Use as Screensaver", subtitle: "Plays when your Mac is idle",
-                                icon: .moon) { applyScreensaver() }
-                BigActionButton(title: "Use as Wallpaper", subtitle: "Lives on your desktop",
-                                icon: .storm) { applyWallpaper() }
+            Group {
+                if mode == "smooth" {
+                    BigActionButton(title: smoothActive ? "Update Smooth Mode" : "Apply Smooth Mode",
+                                    subtitle: "Screensaver, lock screen and desktop, all in one",
+                                    icon: .moon) { applySmooth() }
+                } else {
+                    HStack(spacing: 12) {
+                        BigActionButton(title: "Use as Screensaver", subtitle: "Plays when your Mac is idle",
+                                        icon: .moon) { applyScreensaver() }
+                        BigActionButton(title: "Use as Wallpaper", subtitle: "Lives on your desktop",
+                                        icon: .storm) { applyWallpaper() }
+                    }
+                }
             }
             .padding(.top, 2)
             .disabled(draft.effects.isEmpty)
@@ -159,14 +190,21 @@ struct ContentView: View {
             }
 
             Rectangle().fill(Color.ink.opacity(0.12)).frame(height: 1)
-            statusRow(title: "Screensaver",
-                      value: screensaver?.summary ?? (screensaverInstalled ? "Installed, all effects" : "Not installed")) {
-                Button("Screen Saver Settings…") { Screensaver.openSettings() }.buttonStyle(PixelButtonStyle())
-            }
-            statusRow(title: "Wallpaper", value: wallpaperStatus) {
-                if wallpaper.isRunning {
-                    Button(wallpaper.paused ? "Resume" : "Pause") { wallpaper.paused.toggle() }.buttonStyle(PixelButtonStyle())
-                    Button("Turn Off") { wallpaper.stop() }.buttonStyle(PixelButtonStyle())
+            if smoothActive, let config = wallpaper.config {
+                statusRow(title: "Smooth Mode", value: config.summary.replacingOccurrences(of: ", smooth", with: "")) {
+                    Button("Screen Saver Settings…") { Screensaver.openSettings() }.buttonStyle(PixelButtonStyle())
+                    Button("Turn Off") { turnOffSmooth() }.buttonStyle(PixelButtonStyle())
+                }
+            } else {
+                statusRow(title: "Screensaver",
+                          value: screensaver?.summary ?? (screensaverInstalled ? "Installed, all effects" : "Not installed")) {
+                    Button("Screen Saver Settings…") { Screensaver.openSettings() }.buttonStyle(PixelButtonStyle())
+                }
+                statusRow(title: "Wallpaper", value: wallpaperStatus) {
+                    if wallpaper.isRunning {
+                        Button(wallpaper.paused ? "Resume" : "Pause") { wallpaper.paused.toggle() }.buttonStyle(PixelButtonStyle())
+                        Button("Turn Off") { wallpaper.stop() }.buttonStyle(PixelButtonStyle())
+                    }
                 }
             }
             if let update = updates.available {
@@ -225,6 +263,7 @@ struct ContentView: View {
                 .disabled(!draft.showClock)
                 .opacity(draft.showClock ? 1 : 0.35)
             }
+            if mode == "custom" {
             optionRow("Wallpaper") {
                 PixelSegmented(selection: Binding(get: { "\(wallpaper.options.fps)" },
                                                   set: { wallpaper.options.fps = Int($0) ?? 30 }),
@@ -232,6 +271,7 @@ struct ContentView: View {
                     .frame(width: 190)
                 Toggle("Pause on battery", isOn: $wallpaper.options.pauseOnBattery).toggleStyle(PixelCheckboxStyle())
                 Toggle("Pause in Low Power Mode", isOn: $wallpaper.options.pauseInLowPowerMode).toggleStyle(PixelCheckboxStyle())
+            }
             }
         }
     }
@@ -255,9 +295,47 @@ struct ContentView: View {
 
     // MARK: actions
 
-    private func applyScreensaver() {
+    /// Smooth mode: the screensaver keeps playing on the lock screen and announces
+    /// its effects; the desktop picture (shown on the lock screen) becomes a still of the
+    /// logo; the wallpaper finishes the last animation after you log in, then holds.
+    private func applySmooth() {
+        var config = draft
+        config.smoothTransition = true
+        wallpaper.start(config)
+        LockScreen.apply(config)
         do {
-            switch try Screensaver.apply(draft) {
+            switch try Screensaver.apply(config) {
+            case .updated:
+                message = "Smooth mode is on: the screensaver, lock screen and desktop now share one look."
+            case .installerOpened:
+                message = "Almost there: click Install in the dialog (and Replace, if asked), then choose Applarchy in Screen Saver settings."
+            }
+        } catch {
+            message = "Couldn't update the screensaver: \(error.localizedDescription)"
+        }
+        refresh()
+    }
+
+    private func turnOffSmooth() {
+        wallpaper.stop()
+        LockScreen.restore()
+        Screensaver.setSmooth(false)
+        message = "Smooth mode is off. Your previous wallpaper and lock screen are back."
+        refresh()
+    }
+
+    /// Custom mode: leaving smooth mode puts the wallpaper and lock screen back.
+    private func leaveSmooth() {
+        guard smoothActive else { return }
+        LockScreen.restore()
+    }
+
+    private func applyScreensaver() {
+        var config = draft
+        config.smoothTransition = false
+        if smoothActive { leaveSmooth(); wallpaper.stop() }
+        do {
+            switch try Screensaver.apply(config) {
             case .updated:
                 message = "Screensaver updated. It takes effect the next time the screensaver starts."
             case .installerOpened:
@@ -270,8 +348,12 @@ struct ContentView: View {
     }
 
     private func applyWallpaper() {
-        wallpaper.start(draft)
+        var config = draft
+        config.smoothTransition = false
+        if smoothActive { leaveSmooth(); Screensaver.setSmooth(false) }
+        wallpaper.start(config)
         message = "Wallpaper set. It runs behind your desktop icons and starts again when you log in."
+        refresh()
     }
 
     private func refresh() {
