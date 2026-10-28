@@ -12,13 +12,14 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${DEVELOPER_ID:?set DEVELOPER_ID to your 'Developer ID Application: …' signing identity}"
 : "${NOTARY_PROFILE:?set NOTARY_PROFILE to a notarytool keychain profile (see above)}"
-VERSION=$(cat VERSION)
-APP=dist/Applarchy.app
-DMG="dist/Applarchy-$VERSION.dmg"
+export APPLARCHY_FLAVOR="${APPLARCHY_FLAVOR:-release}"     # signing is for releases
+source scripts/flavor.sh
+APP="dist/$APP_NAME.app"
+DMG="dist/${APP_NAME// /-}-$VERSION.dmg"
 
 scripts/build.sh
 # Inside out: the bundled screensaver first, then the app (hardened runtime, secure timestamp).
-codesign --force --timestamp --options runtime --sign "$DEVELOPER_ID" "$APP/Contents/Resources/Applarchy.saver"
+codesign --force --timestamp --options runtime --sign "$DEVELOPER_ID" "$APP/Contents/Resources/$APP_NAME.saver"
 codesign --force --timestamp --options runtime --sign "$DEVELOPER_ID" "$APP"
 codesign --verify --strict --verbose=2 "$APP"
 

@@ -136,9 +136,21 @@ You need the Xcode Command Line Tools (`xcode-select --install`) and Rust
 ```bash
 git clone https://github.com/CaptainCompileon/applarchy.git
 cd applarchy
-scripts/build.sh          # → dist/Applarchy.app
-scripts/package-dmg.sh    # → dist/Applarchy-<version>.dmg
+scripts/dev.sh            # build, install to ~/Applications and open "Applarchy DEV"
 ```
+
+Local builds are **Applarchy DEV**: a separate app with its own settings, login item and
+screensaver ("Applarchy DEV" in Screen Saver settings), so you can test it next to an installed
+Applarchy. Its window title shows the commit it was built from. In VS Code, ⇧⌘B runs
+`scripts/dev.sh`. To build the released app instead:
+
+```bash
+APPLARCHY_FLAVOR=release scripts/build.sh          # → dist/Applarchy.app
+APPLARCHY_FLAVOR=release scripts/package-dmg.sh    # → dist/Applarchy-<version>.dmg
+```
+
+Without `APPLARCHY_FLAVOR=release`, `scripts/build.sh` and `scripts/package-dmg.sh` produce
+`dist/Applarchy DEV.app` and `dist/Applarchy-DEV-<version>.dmg`.
 
 Builds are **universal** (Apple Silicon + Intel) when [rustup](https://rustup.rs) has the Intel target
 (`rustup target add x86_64-apple-darwin`), and Apple Silicon only otherwise. Every version tag is

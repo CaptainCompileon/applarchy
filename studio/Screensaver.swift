@@ -6,8 +6,7 @@ import AppKit
 /// (the case even for an all-users install made from System Settings), it is
 /// updated in place and re-signed; otherwise System Settings' installer is used.
 enum Screensaver {
-    static let bundleName = "Applarchy.saver"
-    static let executable = "ApplarchySaverView"
+    static let bundleName = AppIdentity.saverBundle
 
     static var template: URL { Bundle.main.resourceURL!.appendingPathComponent(bundleName) }
 
