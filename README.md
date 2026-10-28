@@ -185,6 +185,8 @@ studio/   the app: SwiftUI front end, live preview, wallpaper windows, screensav
   wide-colour backing store every frame.
 - Effects run at Omarchy's 120 fps pace; rendering is 60 fps for the screensaver and 30 fps for
   the wallpaper.
+- The layout (text size, logo, clock) scales to whichever of the screen's width or height is
+  tighter, so ultrawide and portrait displays look like a laptop's, with more room around them.
 
 ## Privacy
 
