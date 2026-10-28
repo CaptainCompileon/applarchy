@@ -18,8 +18,8 @@ struct TutorialOverlay: View {
              body: "Go Chill Guy with the small logo, or Apple Evangelist with the big one. The screensaver can also show a pixel clock.",
              picture: .pair(Shot(title: "Chill Guy", effects: ["highlight"], logo: "apple-small", clock: false),
                             Shot(title: "Apple Evangelist", effects: ["highlight"], logo: "apple", clock: false))),
-        Step(title: "Screensaver or wallpaper",
-             body: "Hit Use as Screensaver, or Use as Wallpaper to run it live behind your desktop icons. Pause or turn it off any time from the ⛈ icon in the menu bar.",
+        Step(title: "Smooth or custom",
+             body: "SMOOTH MODE gives you one look everywhere: screensaver, lock screen and desktop, with the animation carrying on as you unlock. CUSTOM sets the screensaver and wallpaper separately. The menu bar icon pauses or stops it any time.",
              picture: .pair(Shot(title: "Screensaver", effects: ["matrix", "decrypt"], logo: "apple-small", clock: true),
                             Shot(title: "Wallpaper", effects: ["thunderstorm"], logo: "apple", clock: false))),
     ]
