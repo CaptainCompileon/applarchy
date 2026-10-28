@@ -11,6 +11,10 @@ on:
 permissions:
   contents: write
 
+# The released "Applarchy"; local builds default to "Applarchy DEV" (scripts/flavor.sh).
+env:
+  APPLARCHY_FLAVOR: release
+
 jobs:
   dmg:
     runs-on: macos-15
