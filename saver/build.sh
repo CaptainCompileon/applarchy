@@ -35,6 +35,7 @@ cat > "$OUT/Info.plist" <<PLIST
   <key>CFBundlePackageType</key><string>BNDL</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>$VERSION</string>
+  <key>ApplarchyHandoffID</key><string>$HANDOFF_ID</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>NSPrincipalClass</key><string>$SAVER_CLASS</string>
 </dict>
