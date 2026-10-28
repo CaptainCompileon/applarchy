@@ -209,7 +209,10 @@ final class Wallpaper: NSObject, ObservableObject {
         else if options.pauseInLowPowerMode && ProcessInfo.processInfo.isLowPowerModeEnabled { powerPause = "Low Power Mode" }
         else { powerPause = nil }
         for (window, view) in zip(windows, views) {
-            let run = !paused && !systemPaused && powerPause == nil && window.occlusionState.contains(.visible)
+            let visible = window.occlusionState.contains(.visible)
+            let run = !paused && !systemPaused && powerPause == nil && visible
+            os_log("%{public}dx%{public}d: %{public}@", log: Self.log, type: .default, Int(window.frame.width), Int(window.frame.height),
+                   run ? "run" : "stop (\([paused ? "paused" : nil, systemPaused ? "screensaver/sleep" : nil, powerPause, visible ? nil : "covered"].compactMap { $0 }.joined(separator: ", ")))")
             if run && !view.isAnimating { view.startAnimation() }
             if !run && view.isAnimating { view.stopAnimation() }
         }
