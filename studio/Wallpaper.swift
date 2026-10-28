@@ -151,7 +151,7 @@ final class Wallpaper: NSObject, ObservableObject {
             view.maxEngineFrames = 200_000
             view.followsScreensaverStop = false
             view.bitmapScale = 1                    // 1x pixels, scaled up crisply: pixel art, cheap
-            view.animationTimeInterval = 1.0 / Double(options.fps)
+            view.animationTimeInterval = 1.0 / Double(options.rate(displayHz: screen.maximumFramesPerSecond))
             window.contentView = view
             window.orderFrontRegardless()
             NotificationCenter.default.addObserver(self, selector: #selector(occlusionChanged), name: NSWindow.didChangeOcclusionStateNotification, object: window)

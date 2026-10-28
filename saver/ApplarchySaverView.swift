@@ -107,9 +107,15 @@ final class ApplarchySaverView: ScreenSaverView {
     var bitmapScale: CGFloat?
     private var bitmap: CGContext?
 
-    // Omarchy runs ttfx at 120 fps; at 60 Hz that is two engine frames per tick.
-    private var engineFramesPerTick: Int {
-        max(1, Int((120 * animationTimeInterval * (settling ? Self.settleSpeed : 1)).rounded()))
+    // Omarchy runs ttfx at 120 fps; at 60 Hz that is two engine frames per tick. At rates
+    // that don't divide 120 (75, 90 Hz…) a tick is worth a fraction of a frame more or
+    // less; the remainder carries over, so effects keep the same pace at any rate.
+    private var engineFrameCarry = 0.0
+    private func engineFramesThisTick() -> Int {
+        engineFrameCarry += 120 * animationTimeInterval * (settling ? Self.settleSpeed : 1)
+        let n = Int(engineFrameCarry + 1e-9)    // 120 × (1/120) may land a hair under 1
+        engineFrameCarry -= Double(n)
+        return n
     }
     private var holdTicks: Int { max(1, Int((holdSeconds / animationTimeInterval).rounded())) }
 
@@ -348,7 +354,7 @@ final class ApplarchySaverView: ScreenSaverView {
         var frame: UnsafePointer<UInt8>?
         var len = 0
         var finished = false
-        for _ in 0..<engineFramesPerTick {
+        for _ in 0..<engineFramesThisTick() {
             // A null return leaves the last frame (and len) intact: still draw it.
             guard let next = ttfx_saver_next(saver, &len) else { finished = true; break }
             frame = next
