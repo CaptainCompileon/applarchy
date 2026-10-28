@@ -123,8 +123,8 @@ final class ApplarchySaverView: ScreenSaverView {
     // MARK: effect
 
     private func layoutGrid() {
-        // Font size 18 on a 1512 pt wide screen (Omarchy's screensaver size), scaled to the view.
-        let size = max(3, bounds.width / 84)
+        // Font size 18 on a 1512 x 982 pt screen (Omarchy's screensaver size), scaled to the view.
+        let size = max(3, 18 * layoutScale(bounds))
         font = CTFontCreateWithName("Menlo-Regular" as CFString, size, nil)
         var glyph = CGGlyph(0)
         var m: UniChar = 0x4D
@@ -448,9 +448,9 @@ final class ApplarchySaverView: ScreenSaverView {
     // MARK: logo
 
     private var logoCentre: CGFloat {
-        // Below the clock: the clock block plus 38 pt of margin (on a 982 pt screen).
+        // Below the clock: the clock block plus 38 pt of margin (on a 1512 x 982 pt screen).
         let top = logoRegionTop.map { bounds.height * $0 }
-            ?? (showsClock ? 38 * bounds.height / 982 + PixelClock.height(in: bounds, style: clockStyle) : 0)
+            ?? (showsClock ? 38 * layoutScale(bounds) + PixelClock.height(in: bounds, style: clockStyle) : 0)
         return (top + bounds.height) / 2
     }
 
