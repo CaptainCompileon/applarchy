@@ -191,6 +191,7 @@ final class Wallpaper: NSObject, ObservableObject {
         updateAnimation()
     }
     @objc private func systemResume() {
+        guard systemPaused else { updateAnimation(); return }   // willstop, didstop and wake may all arrive
         os_log("resume%{public}@", log: Self.log, type: .default, config?.smoothTransition == true ? " (smooth: picking up the handoff)" : "")
         systemPaused = false
         if config?.smoothTransition == true {
