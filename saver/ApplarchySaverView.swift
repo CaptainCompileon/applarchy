@@ -19,6 +19,75 @@ final class ApplarchySaverView: ScreenSaverView {
     var themeID = "omarchy"
     /// Fall back to gentle effects when macOS's Reduce Motion is on.
     var respectsReduceMotion = true
+    /// Draw the clock (layout still makes room for it when showsClock is on).
+    var clockVisible = true
+
+    // MARK: smooth mode
+    //
+    // The screensaver announces every effect it starts (Handoff.notification). When
+    // you move the mouse it "settles": no new effects; the current one plays out at
+    // settleSpeed and pauses on the full logo — behind the lock screen, if macOS keeps
+    // it there — and it announces the moment settling began. The Applarchy wallpaper,
+    // in hold mode, computes the same timeline when the desktop comes back (the
+    // engine is deterministic for a seed): it carries on settling from the matching
+    // frame or, if that's over, shows the paused logo. So screensaver → desktop and
+    // screensaver → lock screen → desktop end the same way.
+
+    static let settleSpeed = 6.0
+
+    struct Handoff: Equatable {
+        static let notification = Notification.Name("com.applarchy.handoff")
+        var command: String
+        var seed: UInt64
+        var startedAt: Date
+        var size: CGSize
+        /// When the screensaver began settling (the mouse moved), if it has.
+        var settleAt: Date?
+
+        /// Engine frame (120 per second, settleSpeed times faster once settling) at `t`.
+        func frame(at t: Date) -> Int {
+            let elapsed = min(t.timeIntervalSince(startedAt), 3600)
+            guard let settleAt, t > settleAt else { return Int(max(0, elapsed) * 120) }
+            let before = max(0, settleAt.timeIntervalSince(startedAt)) * 120
+            return Int(before + min(t.timeIntervalSince(settleAt), 3600) * 120 * ApplarchySaverView.settleSpeed)
+        }
+
+        /// The named pasteboard a screen's screensaver leaves its latest announcement on
+        /// (one per screen size). The app reads it when the desktop comes back; unlike a
+        /// distributed notification, that doesn't depend on delivery at the moment it's sent.
+        static func pasteboard(for size: CGSize) -> NSPasteboard {
+            NSPasteboard(name: NSPasteboard.Name("com.applarchy.handoff.\(Int(size.width))x\(Int(size.height))"))
+        }
+
+        /// Distributed-notification payload: sandboxed senders may only pass a string.
+        var payload: String {
+            "\(seed)|\(startedAt.timeIntervalSince1970)|\(Int(size.width))x\(Int(size.height))|\(settleAt?.timeIntervalSince1970 ?? 0)|\(command)"
+        }
+
+        init(command: String, seed: UInt64, startedAt: Date, size: CGSize, settleAt: Date? = nil) {
+            self.command = command; self.seed = seed; self.startedAt = startedAt; self.size = size; self.settleAt = settleAt
+        }
+
+        init?(payload: String) {
+            let parts = payload.split(separator: "|", maxSplits: 4).map(String.init)
+            guard parts.count == 5, let seed = UInt64(parts[0]), let t = Double(parts[1]), let settle = Double(parts[3]) else { return nil }
+            let wh = parts[2].split(separator: "x").compactMap { Double($0) }
+            guard wh.count == 2 else { return nil }
+            self.init(command: parts[4], seed: seed, startedAt: Date(timeIntervalSince1970: t),
+                      size: CGSize(width: wh[0], height: wh[1]), settleAt: settle > 0 ? Date(timeIntervalSince1970: settle) : nil)
+        }
+    }
+
+    /// Screensaver: keep playing through the lock screen and announce each effect.
+    var smoothTransition = false
+    /// Wallpaper: play `handoff` (or settle at once) and keep the last frame, instead of cycling.
+    var holdsWhenDone = false
+    var handoff: Handoff?
+    private var holding = false
+    /// Playing out the current effect at settleSpeed, then pausing.
+    private var settling = false
+    /// The effect the screensaver is playing, as announced.
+    private var announced: Handoff?
     /// The logo is centred between this fraction of the screen height and the bottom.
     /// nil: just below the clock (or the whole screen without one).
     var logoRegionTop: CGFloat?
@@ -34,7 +103,9 @@ final class ApplarchySaverView: ScreenSaverView {
     private var bitmap: CGContext?
 
     // Omarchy runs ttfx at 120 fps; at 60 Hz that is two engine frames per tick.
-    private var engineFramesPerTick: Int { max(1, Int((120 * animationTimeInterval).rounded())) }
+    private var engineFramesPerTick: Int {
+        max(1, Int((120 * animationTimeInterval * (settling ? Self.settleSpeed : 1)).rounded()))
+    }
     private var holdTicks: Int { max(1, Int((holdSeconds / animationTimeInterval).rounded())) }
 
     private var saver: OpaquePointer?
@@ -74,6 +145,21 @@ final class ApplarchySaverView: ScreenSaverView {
         DistributedNotificationCenter.default().addObserver(
             self, selector: #selector(willStop),
             name: NSNotification.Name("com.apple.screensaver.willstop"), object: nil)
+        DistributedNotificationCenter.default().addObserver(
+            self, selector: #selector(didStart),
+            name: NSNotification.Name("com.apple.screensaver.didstart"), object: nil)
+    }
+
+    /// macOS reuses a running screensaver instance (e.g. starting it again on the lock
+    /// screen) without calling startAnimation, so an instance that settled on the logo
+    /// last time would stay frozen. Start it animating again.
+    @objc private func didStart(_ note: Notification) {
+        guard !isPreview, settling || holding else { return }
+        os_log("didstart: resuming from the settled logo", log: Self.log, type: .default)
+        settling = false
+        holding = false
+        holdRemaining = 0
+        startEffect()
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
@@ -90,6 +176,7 @@ final class ApplarchySaverView: ScreenSaverView {
 
     override func startAnimation() {
         super.startAnimation()
+        settling = false
         applyBundleConfig()
         layoutGrid()
         os_log("start %{public}dx%{public}d grid %{public}dx%{public}d preview=%{public}d", log: Self.log, type: .default,
@@ -107,6 +194,18 @@ final class ApplarchySaverView: ScreenSaverView {
     // keeps running. So free the effect here, and let animateOneFrame decide
     // from the window whether to carry on (a new effect) or stay idle.
     @objc private func willStop(_ note: Notification) {
+        if smoothTransition && !isPreview {
+            // The mouse moved: play out the current effect quickly, pause on the logo,
+            // and tell the desktop when settling began.
+            guard !settling else { return }
+            settling = true
+            if holdRemaining > 0 { holdRemaining = 0; holding = true }     // between effects: already settled
+            if var h = announced, !holding {
+                h.settleAt = Date()
+                announce(h)
+            }
+            return
+        }
         guard followsScreensaverStop else { return }
         os_log("willstop (preview=%{public}d)", log: Self.log, type: .default, isPreview ? 1 : 0)
         endEffect()
@@ -164,8 +263,10 @@ final class ApplarchySaverView: ScreenSaverView {
 
     private func startEffect() {
         endEffect()
+        holding = false
         let text = logo
         let height = Int32(rows + logoLayout().extra)   // rows past the screen are never drawn
+        if holdsWhenDone { resumeHandoff(text: text, height: height); return }
         let seed = UInt64.random(in: 1...UInt64.max)
         // Fall back to a random pick if a named effect can't be built.
         let name = theme.command(for: nextEffectName())
@@ -174,6 +275,48 @@ final class ApplarchySaverView: ScreenSaverView {
         os_log("effect %{public}@ %{public}@", log: Self.log, type: .default, name, saver == nil ? "FAILED" : "ok")
         engineFrames = 0
         holdRemaining = 0
+        if smoothTransition, !isPreview, saver != nil {
+            let h = Handoff(command: name, seed: seed, startedAt: Date(), size: bounds.size)
+            announced = h
+            announce(h)
+        }
+    }
+
+    /// Tell the Applarchy wallpaper what's playing: a distributed notification and the
+    /// screen's named pasteboard (whichever reaches it).
+    private func announce(_ h: Handoff) {
+        DistributedNotificationCenter.default().postNotificationName(Handoff.notification, object: h.payload, userInfo: nil, deliverImmediately: true)
+        let board = Handoff.pasteboard(for: h.size)
+        board.clearContents()
+        let ok = board.setString(h.payload, forType: .string)
+        os_log("announced %{public}@%{public}@ for %{public}dx%{public}d (pasteboard %{public}@)", log: Self.log, type: .default,
+               String(h.command.split(separator: " ").first { !$0.hasPrefix("-") && !$0.allSatisfy(\.isHexDigit) } ?? ""),
+               h.settleAt == nil ? "" : " settling", Int(h.size.width), Int(h.size.height), ok ? "ok" : "FAILED")
+    }
+
+    /// Hold mode: rebuild the handed-off effect (or a quick wipe when there's none),
+    /// fast-forward to where the screensaver would be now, and either carry on from
+    /// there or, if it has already finished, show its last frame and hold it.
+    private func resumeHandoff(text: String, height: Int32) {
+        // Kept after use: a later restart (e.g. the desktop is uncovered) settles on the same last frame.
+        let h = handoff ?? Handoff(command: theme.command(for: "wipe"), seed: 1, startedAt: .distantPast, size: bounds.size)
+        saver = text.withCString { t in h.command.withCString { ttfx_saver_new_named(t, Int32(cols), height, h.seed, $0) } }
+        guard let saver else { return }
+        let target = h.frame(at: Date())
+        settling = h.settleAt != nil                                   // keep settling at the same speed
+        var frame: UnsafePointer<UInt8>?, len = 0, n = 0
+        while n < max(target, 1), let next = ttfx_saver_next(saver, &len) { frame = next; n += 1 }
+        engineFrames = n
+        if let frame {
+            parse(UnsafeBufferPointer(start: frame, count: len))
+            previous = cells
+            invalidateAll()
+        }
+        if n < max(target, 1) {          // already finished: hold its last frame
+            endEffect()
+            holding = true
+        }
+        os_log("handoff %{public}@ at frame %{public}d%{public}@", log: Self.log, type: .default, h.command, n, holding ? " (finished)" : "")
     }
 
     private func endEffect() {
@@ -186,6 +329,7 @@ final class ApplarchySaverView: ScreenSaverView {
             let now = PixelClock.timeString(clockStyle)
             if now != clockText { clockText = now; invalidateAll() }
         }
+        if holding { return }
         if holdRemaining > 0 {
             holdRemaining -= 1
             if holdRemaining == 0 { startEffect() }
@@ -209,6 +353,7 @@ final class ApplarchySaverView: ScreenSaverView {
         }
         if finished || engineFrames >= maxEngineFrames {
             endEffect()
+            if holdsWhenDone || settling { holding = true; return }
             holdRemaining = holdTicks
         }
     }
@@ -239,6 +384,9 @@ final class ApplarchySaverView: ScreenSaverView {
         bitmap = ctx
         wantsLayer = true
     }
+
+    /// The current picture, in bitmap mode (for rendering stills, e.g. the lock-screen picture).
+    func snapshotImage() -> CGImage? { bitmap?.makeImage() }
 
     override var wantsUpdateLayer: Bool { bitmapScale != nil }
 
@@ -388,7 +536,7 @@ final class ApplarchySaverView: ScreenSaverView {
             }
         }
         // The clock sits midway between the top of the screen and the top of the logo.
-        if showsClock {
+        if showsClock && clockVisible {
             var style = clockStyle
             style.color = theme.foreground
             PixelClock.draw(in: bounds, top: round((logoTop - PixelClock.height(in: bounds, style: clockStyle)) / 2), style: style, ctx)
@@ -512,6 +660,7 @@ final class ApplarchySaverView: ScreenSaverView {
         if let cycle = config["hourCycle"] as? String { clockStyle.hourCycle = cycle }
         if let date = config["showDate"] as? Bool { clockStyle.showDate = date }
         if let large = config["clockLarge"] as? Bool { clockStyle.large = large }
+        if let smooth = config["smoothTransition"] as? Bool { smoothTransition = smooth }
     }
 
     override var hasConfigureSheet: Bool { false }

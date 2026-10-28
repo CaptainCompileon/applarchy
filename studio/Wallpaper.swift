@@ -18,6 +18,8 @@ final class Wallpaper: NSObject, ObservableObject {
     /// Why the wallpaper is currently paused by a power setting, for the status line.
     @Published private(set) var powerPause: String?
     private var powerSource: CFRunLoopSource?
+    /// The latest effect each screen's screensaver started, keyed by screen size ("WxH").
+    private var handoffs: [String: StudioEffectView.Handoff] = [:]
     private var windows: [NSWindow] = []
     private var views: [StudioEffectView] = []
     private var systemPaused = false
@@ -45,7 +47,39 @@ final class Wallpaper: NSObject, ObservableObject {
             powerSource = source
         }
         NotificationCenter.default.addObserver(self, selector: #selector(powerChanged), name: .NSProcessInfoPowerStateDidChange, object: nil)
+        dnc.addObserver(self, selector: #selector(receivedHandoff(_:)), name: StudioEffectView.Handoff.notification, object: nil,
+                        suspensionBehavior: .deliverImmediately)
+        dnc.addObserver(self, selector: #selector(screenLocked), name: .init("com.apple.screenIsLocked"), object: nil)
+        dnc.addObserver(self, selector: #selector(systemResume), name: .init("com.apple.screenIsUnlocked"), object: nil)
     }
+
+    /// The screensaver's latest announcement for a screen size: from its pasteboard
+    /// (always readable), or a notification that reached us, whichever is newer.
+    private func latestHandoff(for size: CGSize) -> StudioEffectView.Handoff? {
+        let board = StudioEffectView.Handoff.pasteboard(for: size).string(forType: .string).flatMap(StudioEffectView.Handoff.init(payload:))
+        let note = handoffs[Self.key(size)]
+        func stamp(_ h: StudioEffectView.Handoff) -> Date { max(h.startedAt, h.settleAt ?? .distantPast) }
+        switch (board, note) {
+        case let (b?, n?): return stamp(b) >= stamp(n) ? b : n
+        case let (b, n): return b ?? n
+        }
+    }
+
+    /// Smooth mode: locking the screen starts the screensaver straight away, so the
+    /// lock screen plays the animation; unlocking hands it back to the desktop.
+    @objc private func screenLocked() {
+        guard config?.smoothTransition == true else { return }
+        systemPause()
+        NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: "/System/Library/CoreServices/ScreenSaverEngine.app"),
+                                           configuration: NSWorkspace.OpenConfiguration())
+    }
+
+    @objc private func receivedHandoff(_ note: Notification) {
+        guard let payload = note.object as? String, let h = StudioEffectView.Handoff(payload: payload) else { return }
+        DispatchQueue.main.async { self.handoffs[Self.key(h.size)] = h }
+    }
+
+    private static func key(_ size: CGSize) -> String { "\(Int(size.width))x\(Int(size.height))" }
 
     @objc private func powerChanged() {
         DispatchQueue.main.async { self.updateAnimation() }
@@ -58,6 +92,11 @@ final class Wallpaper: NSObject, ObservableObject {
     }
 
     func start(_ config: EffectConfig) {
+        // Effects announced under the previous look carry its theme in their commands.
+        if config != self.config {
+            handoffs.removeAll()
+            for screen in NSScreen.screens { StudioEffectView.Handoff.pasteboard(for: screen.frame.size).clearContents() }
+        }
         self.config = config
         Store.wallpaper = config
         LoginItem.set(enabled: true)
@@ -97,11 +136,17 @@ final class Wallpaper: NSObject, ObservableObject {
             window.setFrame(screen.frame, display: false)
 
             guard let view = StudioEffectView(frame: NSRect(origin: .zero, size: screen.frame.size), isPreview: false) else { continue }
-            view.effectCommands = config.commands(forWallpaper: true)
+            view.effectCommands = config.commands(forWallpaper: !config.smoothTransition)
             view.customLogoText = config.customLogo
             view.logoName = config.logo
             view.themeID = config.theme
-            view.showsClock = false
+            // Smooth transition: the screensaver's layout (so the logo doesn't move), minus the
+            // clock itself, playing the handed-off effect to its end and holding it.
+            view.showsClock = config.smoothTransition && config.showClock
+            view.clockStyle = config.clockStyle
+            view.clockVisible = false
+            view.holdsWhenDone = config.smoothTransition
+            view.handoff = latestHandoff(for: screen.frame.size)
             view.holdSeconds = 4
             view.maxEngineFrames = 200_000
             view.followsScreensaverStop = false
@@ -118,7 +163,17 @@ final class Wallpaper: NSObject, ObservableObject {
 
     @objc private func occlusionChanged() { updateAnimation() }
     @objc private func systemPause() { systemPaused = true; updateAnimation() }
-    @objc private func systemResume() { systemPaused = false; updateAnimation() }
+    @objc private func systemResume() {
+        systemPaused = false
+        if config?.smoothTransition == true {
+            // Pick up the screensaver's latest effect on each screen, from where it is now.
+            for (window, view) in zip(windows, views) {
+                view.handoff = latestHandoff(for: window.frame.size) ?? view.handoff
+                if view.isAnimating { view.stopAnimation() }
+            }
+        }
+        updateAnimation()
+    }
 
     private func updateAnimation() {
         if options.pauseOnBattery && onBattery { powerPause = "on battery" }
