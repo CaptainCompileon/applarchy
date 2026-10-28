@@ -83,6 +83,99 @@ final class ApplarchySaverView: ScreenSaverView {
         }
     }
 
+    // MARK: shared timeline
+    //
+    // Every animating view in a process (one per screen, plus the earlier instances
+    // macOS keeps alive and restarts in the screensaver host) plays the same effect with
+    // the same seed from the same moment, catching up when it starts late. The next
+    // effect starts once every screen has finished and held the logo. So the screens
+    // stay in step, and every instance announces the same handoff for its screen size,
+    // whichever one is showing. Previews and the wallpaper's hold mode play on their own.
+
+    fileprivate final class Timeline {
+        struct Slot { let effect: String; let seed: UInt64; let startedAt: Date; var settleAt: Date? }
+        private final class Member { weak var view: ApplarchySaverView? ; init(_ v: ApplarchySaverView) { view = v } }
+
+        static let shared = Timeline()
+        private(set) var slot: Slot?
+        private var members: [ObjectIdentifier: Member] = [:]
+        private var finished: Set<ObjectIdentifier> = []
+        private var next: DispatchWorkItem?
+        private var playlist: [String] = []
+        private var lastEffect = ""
+
+        /// A view starts animating: it plays the current effect from where it is now, or,
+        /// when there's none (or the last one settled: a new run), starts the next.
+        func join(_ v: ApplarchySaverView) {
+            members[ObjectIdentifier(v)] = Member(v)
+            if let slot, slot.settleAt == nil { v.play(slot) } else { startNext(using: v) }
+        }
+
+        func leave(_ v: ApplarchySaverView) {
+            members[ObjectIdentifier(v)] = nil
+            finished.remove(ObjectIdentifier(v))
+            if members.isEmpty { slot = nil; next?.cancel(); next = nil } else { advanceIfAllFinished(holdSeconds: v.holdSeconds) }
+        }
+
+        /// A view played the effect to its end and holds the logo until every screen has.
+        func finish(_ v: ApplarchySaverView) {
+            let first = finished.isEmpty
+            finished.insert(ObjectIdentifier(v))
+            if first, let started = slot?.startedAt {      // a stuck view mustn't hold up the others for ever
+                DispatchQueue.main.asyncAfter(deadline: .now() + 20) { [self] in
+                    if slot?.startedAt == started, slot?.settleAt == nil { startNext(using: v) }
+                }
+            }
+            advanceIfAllFinished(holdSeconds: v.holdSeconds)
+        }
+
+        /// The screensaver (re)started: a fresh effect for everyone, once per start.
+        func restart(using v: ApplarchySaverView) {
+            if let slot, slot.settleAt == nil, Date().timeIntervalSince(slot.startedAt) < 1 { return }
+            startNext(using: v)
+        }
+
+        /// The mouse moved: one settle moment for every view.
+        func settle() -> Date {
+            if slot?.settleAt == nil { slot?.settleAt = Date() }
+            return slot?.settleAt ?? Date()
+        }
+
+        /// Shuffle-bag pick: every effect once, in random order, before any repeats.
+        func pick(from pool: [String]) -> String {
+            playlist.removeAll { !pool.contains($0) }
+            if playlist.isEmpty {
+                playlist = pool.shuffled()
+                if playlist.count > 1, playlist.first == lastEffect { playlist.swapAt(0, playlist.count - 1) }
+            }
+            lastEffect = playlist.removeFirst()
+            return lastEffect
+        }
+
+        private func advanceIfAllFinished(holdSeconds: Double) {
+            guard next == nil, let slot, slot.settleAt == nil, !members.isEmpty,
+                  members.keys.allSatisfy(finished.contains) else { return }
+            let item = DispatchWorkItem { [self] in
+                next = nil
+                guard self.slot?.settleAt == nil else { return }       // settled meanwhile: everyone holds
+                if let v = members.values.lazy.compactMap(\.view).first { startNext(using: v) }
+            }
+            next = item
+            DispatchQueue.main.asyncAfter(deadline: .now() + holdSeconds, execute: item)
+        }
+
+        private func startNext(using v: ApplarchySaverView) {
+            next?.cancel(); next = nil
+            finished = []
+            let slot = Slot(effect: v.nextEffectName(), seed: UInt64.random(in: 1...UInt64.max), startedAt: Date())
+            self.slot = slot
+            for m in members.values { m.view?.play(slot) }
+        }
+    }
+
+    /// Whether this view plays the shared Timeline.
+    private var sharesTimeline: Bool { !isPreview && !holdsWhenDone }
+
     /// Screensaver: keep playing through the lock screen and announce each effect.
     var smoothTransition = false
     /// Wallpaper: play `handoff` (or settle at once) and keep the last frame, instead of cycling.
@@ -177,11 +270,12 @@ final class ApplarchySaverView: ScreenSaverView {
     /// screen) without calling startAnimation, so an instance that settled on the logo
     /// last time would stay frozen. Start it animating again.
     @objc private func didStart(_ note: Notification) {
-        guard !isPreview, followsScreensaverStop, settling || holding else { return }   // not the wallpaper's views
-        guard onScreen else {
-            os_log("didstart: %{public}@ stays idle (not on screen)", log: Self.log, type: .default, instanceID)
+        guard !isPreview, followsScreensaverStop, isAnimating else { return }   // not the wallpaper's views
+        if sharesTimeline {
+            Timeline.shared.restart(using: self)      // a fresh effect, once for all instances
             return
         }
+        guard settling || holding else { return }
         os_log("didstart: %{public}@ resuming from the settled logo", log: Self.log, type: .default, instanceID)
         settling = false
         holding = false
@@ -193,6 +287,7 @@ final class ApplarchySaverView: ScreenSaverView {
 
     deinit {
         DistributedNotificationCenter.default().removeObserver(self)
+        Timeline.shared.leave(self)
         if let saver { ttfx_saver_free(saver) }
     }
 
@@ -211,11 +306,12 @@ final class ApplarchySaverView: ScreenSaverView {
         layoutGrid()
         os_log("start %{public}@ %{public}dx%{public}d grid %{public}dx%{public}d %{public}d fps preview=%{public}d", log: Self.log, type: .default,
                instanceID, Int(bounds.width), Int(bounds.height), cols, rows, Int((1 / animationTimeInterval).rounded()), isPreview ? 1 : 0)
-        startEffect()
+        if sharesTimeline { Timeline.shared.join(self) } else { startEffect() }
     }
 
     override func stopAnimation() {
         super.stopAnimation()
+        Timeline.shared.leave(self)
         endEffect()
     }
 
@@ -227,35 +323,33 @@ final class ApplarchySaverView: ScreenSaverView {
         if smoothTransition && !isPreview {
             // The mouse moved: play out the current effect quickly, pause on the logo,
             // and tell the desktop when settling began.
-            guard !settling, onScreen else { return }
+            guard !settling else { return }
             settling = true
             if holdRemaining > 0 { holdRemaining = 0; holding = true }     // between effects: already settled
+            let at = sharesTimeline ? Timeline.shared.settle() : Date()  // the same moment on every instance
             if var h = announced, !holding {
-                h.settleAt = Date()
+                h.settleAt = at
                 announce(h)
             }
             return
         }
         guard followsScreensaverStop else { return }
         os_log("willstop (preview=%{public}d)", log: Self.log, type: .default, isPreview ? 1 : 0)
+        if sharesTimeline && isAnimating { Timeline.shared.restart(using: self); return }
         endEffect()
         holdRemaining = 0
     }
 
     private static let log = OSLog(subsystem: "com.applarchy.screensaver", category: "saver")
 
-    /// Whether this instance's window is showing. macOS keeps earlier screensaver
-    /// instances alive (and hidden) after it closes; only one on screen may announce,
-    /// settle or resume, or they all write to the same screen's handoff.
-    private var onScreen: Bool { window?.isVisible == true }
     /// Short instance id for the log, to tell the instances in one host apart.
-    private var instanceID: String {
-        String(UInt(bitPattern: ObjectIdentifier(self).hashValue) & 0xFFFFF, radix: 16) + (onScreen ? "" : " (hidden)")
-    }
+    private var instanceID: String { String(UInt(bitPattern: ObjectIdentifier(self).hashValue) & 0xFFFFF, radix: 16) }
 
     override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
-        if isAnimating { layoutGrid(); startEffect() }
+        guard isAnimating else { return }
+        layoutGrid()
+        if sharesTimeline, let slot = Timeline.shared.slot { play(slot) } else { startEffect() }
     }
 
     // MARK: effect
@@ -285,7 +379,7 @@ final class ApplarchySaverView: ScreenSaverView {
     /// Effects that stay calm (no flying, exploding or flashing characters).
     private static let gentleEffects: Set<String> = ["colorshift", "expand", "highlight", "middleout", "print", "randomsequence", "sweep", "wipe"]
 
-    private func nextEffectName() -> String {
+    fileprivate func nextEffectName() -> String {
         if let forced = ProcessInfo.processInfo.environment["OMARCHY_EFFECT"] { return forced }  // testing
         var pool = effectCommands
         if respectsReduceMotion && NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
@@ -293,12 +387,51 @@ final class ApplarchySaverView: ScreenSaverView {
             if pool.isEmpty { pool = ["highlight", "colorshift", "wipe"] }
             playlist.removeAll { !pool.contains($0) }
         }
+        if sharesTimeline { return Timeline.shared.pick(from: pool) }
         if playlist.isEmpty {
             playlist = pool.shuffled()
             if playlist.count > 1, playlist.first == lastEffect { playlist.swapAt(0, playlist.count - 1) }
         }
         lastEffect = playlist.removeFirst()
         return lastEffect
+    }
+
+    /// Play the shared timeline's effect: from the start, or (joining late, or after a
+    /// resize) caught up to where the other screens are now.
+    fileprivate func play(_ slot: Timeline.Slot) {
+        endEffect()
+        holding = false
+        holdRemaining = 0
+        engineFrames = 0
+        engineFrameCarry = 0
+        let command = theme.command(for: slot.effect)
+        let height = Int32(rows + logoLayout().extra)   // rows past the screen are never drawn
+        saver = logo.withCString { t in command.withCString { ttfx_saver_new_named(t, Int32(cols), height, slot.seed, $0) } }
+        let h = Handoff(command: command, seed: slot.seed, startedAt: slot.startedAt, size: bounds.size, settleAt: slot.settleAt)
+        settling = slot.settleAt != nil
+        let target = h.frame(at: Date())
+        let playing = saver != nil && (target < 1 || fastForward(to: target))
+        os_log("%{public}@ plays %{public}@ (seed %{public}llu) from frame %{public}d%{public}@", log: Self.log, type: .default,
+               instanceID, slot.effect, slot.seed, engineFrames, playing ? "" : " (finished)")
+        if smoothTransition, !isPreview, saver != nil {
+            announced = h
+            announce(h)
+        }
+        if !playing { endEffect(); holding = true; Timeline.shared.finish(self) }
+    }
+
+    /// Run the effect `target` engine frames in and draw that frame. False if it ended first.
+    private func fastForward(to target: Int) -> Bool {
+        guard let saver else { return false }
+        var frame: UnsafePointer<UInt8>?, len = 0, n = 0
+        while n < target, let next = ttfx_saver_next(saver, &len) { frame = next; n += 1 }
+        engineFrames = n
+        if let frame {
+            parse(UnsafeBufferPointer(start: frame, count: len))
+            previous = cells
+            invalidateAll()
+        }
+        return n >= target
     }
 
     private func startEffect() {
@@ -315,7 +448,7 @@ final class ApplarchySaverView: ScreenSaverView {
         os_log("effect %{public}@ %{public}@", log: Self.log, type: .default, name, saver == nil ? "FAILED" : "ok")
         engineFrames = 0
         holdRemaining = 0
-        if smoothTransition, !isPreview, saver != nil, onScreen {
+        if smoothTransition, !isPreview, saver != nil {
             let h = Handoff(command: name, seed: seed, startedAt: Date(), size: bounds.size)
             announced = h
             announce(h)
@@ -341,22 +474,13 @@ final class ApplarchySaverView: ScreenSaverView {
         // Kept after use: a later restart (e.g. the desktop is uncovered) settles on the same last frame.
         let h = handoff ?? Handoff(command: theme.command(for: "wipe"), seed: 1, startedAt: .distantPast, size: bounds.size)
         saver = text.withCString { t in h.command.withCString { ttfx_saver_new_named(t, Int32(cols), height, h.seed, $0) } }
-        guard let saver else { return }
-        let target = h.frame(at: Date())
+        guard saver != nil else { return }
         settling = h.settleAt != nil                                   // keep settling at the same speed
-        var frame: UnsafePointer<UInt8>?, len = 0, n = 0
-        while n < max(target, 1), let next = ttfx_saver_next(saver, &len) { frame = next; n += 1 }
-        engineFrames = n
-        if let frame {
-            parse(UnsafeBufferPointer(start: frame, count: len))
-            previous = cells
-            invalidateAll()
-        }
-        if n < max(target, 1) {          // already finished: hold its last frame
+        if !fastForward(to: max(h.frame(at: Date()), 1)) {             // already finished: hold its last frame
             endEffect()
             holding = true
         }
-        os_log("handoff %{public}@ at frame %{public}d%{public}@", log: Self.log, type: .default, h.command, n, holding ? " (finished)" : "")
+        os_log("handoff %{public}@ at frame %{public}d%{public}@", log: Self.log, type: .default, h.command, engineFrames, holding ? " (finished)" : "")
     }
 
     private func endEffect() {
@@ -375,7 +499,12 @@ final class ApplarchySaverView: ScreenSaverView {
             if holdRemaining == 0 { startEffect() }
             return
         }
-        guard let saver else { startEffect(); return }
+        guard let saver else {
+            if !sharesTimeline { startEffect() }
+            else if let slot = Timeline.shared.slot, slot.settleAt == nil { play(slot) }   // e.g. it failed to build
+            else { holding = true }
+            return
+        }
         var frame: UnsafePointer<UInt8>?
         var len = 0
         var finished = false
@@ -394,6 +523,7 @@ final class ApplarchySaverView: ScreenSaverView {
         if finished || engineFrames >= maxEngineFrames {
             endEffect()
             if holdsWhenDone || settling { holding = true; return }
+            if sharesTimeline { holding = true; Timeline.shared.finish(self); return }   // the next starts on every screen together
             holdRemaining = holdTicks
         }
     }
