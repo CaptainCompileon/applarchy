@@ -11,10 +11,18 @@ struct ClockStyle: Equatable {
     var color: UInt32 = 0xF0F0F0
 }
 
+/// How much to scale the layout (text grid, logo, clock) for a screen: 1 on a
+/// 1512 x 982 pt screen (Omarchy's screensaver size). The smaller of the two ratios,
+/// so it looks the same on ultrawide and portrait screens, just with more room
+/// around it, instead of overflowing the short side.
+func layoutScale(_ bounds: CGRect) -> CGFloat {
+    min(bounds.width / 1512, bounds.height / 982)
+}
+
 enum PixelClock {
-    // Sizes on a 982 pt tall screen; scaled to the view.
+    // Sizes on a 1512 x 982 pt screen; scaled to the view.
     private static func metrics(_ style: ClockStyle, _ bounds: CGRect) -> (date: CGFloat, time: CGFloat, gap: CGFloat) {
-        let s = bounds.height / 982
+        let s = layoutScale(bounds)
         let date: CGFloat = style.large ? 5 : 4, time: CGFloat = style.large ? 18 : 13, gap: CGFloat = style.large ? 16 : 14
         return (max(1, floor(date * s)), max(1, floor(time * s)), round(gap * s))
     }
