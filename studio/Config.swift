@@ -67,9 +67,20 @@ struct EffectConfig: Codable, Equatable {
 
 /// Wallpaper-only settings; they apply to the running wallpaper immediately.
 struct WallpaperOptions: Codable, Equatable {
-    var fps = 30                      // 60, 30 or 15
+    var fps = 30                      // 120, 60, 30 or 15, or auto
     var pauseOnBattery = false
     var pauseInLowPowerMode = true
+
+    /// `fps` for "match each display's refresh rate".
+    static let auto = 0
+
+    /// The frame rate to run on a display that refreshes up to `displayHz` (0: unknown).
+    /// Auto caps it at the engine's own 120 fps (a faster display would only repeat
+    /// frames) and falls back to 60 when macOS doesn't report a rate.
+    func rate(displayHz: Int) -> Int {
+        guard fps == Self.auto else { return fps }
+        return displayHz > 0 ? min(displayHz, 120) : 60
+    }
 }
 
 /// The app's saved state.

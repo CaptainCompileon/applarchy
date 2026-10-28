@@ -44,8 +44,8 @@ real macOS screensaver and as a live desktop wallpaper, with the effect engine c
   from any picture or pasted text art.
 - **Clock options** — 12- or 24-hour (or follow the system), with or without the date, small or
   large.
-- **Smooth or easy on the battery** — the wallpaper runs at 60, 30 or 15 fps, and can pause on
-  battery power or in Low Power Mode.
+- **Smooth or easy on the battery** — the wallpaper runs at 120, 60, 30 or 15 fps, or **Auto**:
+  each display's own refresh rate (up to 120), and can pause on battery power or in Low Power Mode.
 - **Reduce Motion aware** — with macOS's Reduce Motion on, only the calm effects play.
 - **Update notices** — a note in the app and the menu bar when a new version is out.
 - **Universal** — runs natively on Apple Silicon and Intel Macs.
@@ -183,8 +183,10 @@ studio/   the app: SwiftUI front end, live preview, wallpaper windows, screensav
   ignores the mouse. It draws into an 8-bit offscreen bitmap at 1× and lets the compositor scale
   it up nearest-neighbour — crisp pixel art at a fraction of the cost of redrawing a Retina,
   wide-colour backing store every frame.
-- Effects run at Omarchy's 120 fps pace whatever the frame rate; rendering is 60 fps for the
-  screensaver and 60, 30 (the default) or 15 fps for the wallpaper.
+- Effects run at Omarchy's 120 fps pace whatever the frame rate (a tick's leftover fraction of an
+  engine frame carries over, so 75 or 90 Hz keep the pace too); rendering is 60 fps for the
+  screensaver and 120, 60, 30 (the default) or 15 fps for the wallpaper. Auto uses each display's
+  `maximumFramesPerSecond`, capped at the engine's 120, or 60 when macOS doesn't report one.
 - The layout (text size, logo, clock) scales to whichever of the screen's width or height is
   tighter, so ultrawide and portrait displays look like a laptop's, with more room around them.
 
