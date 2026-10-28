@@ -184,9 +184,9 @@ studio/   the app: SwiftUI front end, live preview, wallpaper windows, screensav
   it up nearest-neighbour — crisp pixel art at a fraction of the cost of redrawing a Retina,
   wide-colour backing store every frame.
 - Effects run at Omarchy's 120 fps pace whatever the frame rate (a tick's leftover fraction of an
-  engine frame carries over, so 75 or 90 Hz keep the pace too); rendering is 60 fps for the
-  screensaver and 120, 60, 30 (the default) or 15 fps for the wallpaper. Auto uses each display's
-  `maximumFramesPerSecond`, capped at the engine's 120, or 60 when macOS doesn't report one.
+  engine frame carries over, so 75 or 90 Hz keep the pace too). The screensaver runs at each
+  display's refresh rate (`maximumFramesPerSecond`, capped at the engine's 120, or 60 when macOS
+  doesn't report one); the wallpaper at 120, 60, 30 (the default) or 15 fps, or Auto, the same rule.
 - The layout (text size, logo, clock) scales to whichever of the screen's width or height is
   tighter, so ultrawide and portrait displays look like a laptop's, with more room around them.
 

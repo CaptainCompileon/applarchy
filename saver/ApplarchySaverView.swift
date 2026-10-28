@@ -100,6 +100,15 @@ final class ApplarchySaverView: ScreenSaverView {
     var maxEngineFrames = 30_000         // safety cap for endless effects
     /// Restart the effect when the system screensaver stops (macOS also sends this on lock).
     var followsScreensaverStop = true
+    /// Run at the display's refresh rate (see displayRate) from startAnimation on, as the
+    /// screensaver does; the app's wallpaper sets its own animationTimeInterval instead.
+    /// Previews keep theirs either way.
+    var matchesDisplayRate = true
+
+    /// The frame rate for a display that refreshes up to `hz` (0: unknown): its own rate,
+    /// capped at the engine's 120 fps (a faster display would only repeat frames), or 60
+    /// when macOS doesn't report one.
+    static func displayRate(hz: Int) -> Int { hz > 0 ? min(hz, 120) : 60 }
     /// When set, draw into an 8-bit offscreen bitmap at this scale and show it as the
     /// layer's contents (scaled up, nearest-neighbour). Far cheaper than redrawing the
     /// window's full-resolution wide-colour backing store every frame; the live
@@ -189,12 +198,15 @@ final class ApplarchySaverView: ScreenSaverView {
     // MARK: lifecycle
 
     override func startAnimation() {
+        if matchesDisplayRate && !isPreview {      // before super, which starts the timer
+            animationTimeInterval = 1 / Double(Self.displayRate(hz: window?.screen?.maximumFramesPerSecond ?? 0))
+        }
         super.startAnimation()
         settling = false
         applyBundleConfig()
         layoutGrid()
-        os_log("start %{public}dx%{public}d grid %{public}dx%{public}d preview=%{public}d", log: Self.log, type: .default,
-               Int(bounds.width), Int(bounds.height), cols, rows, isPreview ? 1 : 0)
+        os_log("start %{public}dx%{public}d grid %{public}dx%{public}d %{public}d fps preview=%{public}d", log: Self.log, type: .default,
+               Int(bounds.width), Int(bounds.height), cols, rows, Int((1 / animationTimeInterval).rounded()), isPreview ? 1 : 0)
         startEffect()
     }
 
