@@ -7,9 +7,11 @@ import AppKit
 /// then restarts WallpaperAgent to load it. The store is backed up first and put
 /// back by restore(), which also brings back aerial and dynamic wallpapers.
 enum LockScreen {
+    /// Application Support/Applarchy (or "Applarchy DEV"): each build keeps its own
+    /// backup and stills, so a DEV build can't restore or reset the released one's.
     private static var folder: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Applarchy", isDirectory: true)
+            .appendingPathComponent(AppIdentity.name, isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
@@ -114,7 +116,7 @@ enum LockScreen {
         guard let plist = loadStore() else { return }
         var changed = false
         // Matched on the file-name prefix: the store keeps percent-encoded URLs ("Application%20Support").
-        for (_, slot) in desktopSlots(plist) where references(slot, "/Applarchy/lock-") {
+        for (_, slot) in desktopSlots(plist) where references(slot, "/\(AppIdentity.name)/lock-") {
             slot["Content"] = NSMutableDictionary(dictionary: [
                 "Choices": [["Provider": "default", "Files": [], "Configuration": Data()]],
                 "Shuffle": "$null", "EncodedOptionValues": "$null",

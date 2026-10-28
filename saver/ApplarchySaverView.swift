@@ -36,7 +36,12 @@ final class ApplarchySaverView: ScreenSaverView {
     static let settleSpeed = 6.0
 
     struct Handoff: Equatable {
-        static let notification = Notification.Name("com.applarchy.handoff")
+        /// This build's handoff name, from its Info.plist (scripts/flavor.sh writes the same
+        /// one into the app and its screensaver), so a DEV screensaver only talks to the
+        /// DEV app and a released one to the released app.
+        static let id = Bundle(for: ApplarchySaverView.self).object(forInfoDictionaryKey: "ApplarchyHandoffID") as? String
+            ?? "com.applarchy.handoff"
+        static let notification = Notification.Name(id)
         var command: String
         var seed: UInt64
         var startedAt: Date
@@ -56,7 +61,7 @@ final class ApplarchySaverView: ScreenSaverView {
         /// (one per screen size). The app reads it when the desktop comes back; unlike a
         /// distributed notification, that doesn't depend on delivery at the moment it's sent.
         static func pasteboard(for size: CGSize) -> NSPasteboard {
-            NSPasteboard(name: NSPasteboard.Name("com.applarchy.handoff.\(Int(size.width))x\(Int(size.height))"))
+            NSPasteboard(name: NSPasteboard.Name("\(id).\(Int(size.width))x\(Int(size.height))"))
         }
 
         /// Distributed-notification payload: sandboxed senders may only pass a string.
