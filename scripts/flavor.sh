@@ -12,6 +12,7 @@ if [ "${APPLARCHY_FLAVOR:-dev}" = release ]; then
   APP_ID=com.applarchy.app
   SAVER_ID=com.applarchy.screensaver
   SAVER_CLASS=ApplarchySaverView     # also its Objective-C name: unique per installed screensaver
+  HANDOFF_ID=com.applarchy.handoff   # Smooth Mode's notification and pasteboards (app and screensaver)
 else
   FLAVOR=dev
   APP_NAME="Applarchy DEV"
@@ -19,4 +20,5 @@ else
   APP_ID=com.applarchy.app.dev
   SAVER_ID=com.applarchy.screensaver.dev
   SAVER_CLASS=ApplarchyDevSaverView
+  HANDOFF_ID=com.applarchy.handoff.dev
 fi

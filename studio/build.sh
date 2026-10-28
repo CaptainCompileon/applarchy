@@ -40,6 +40,7 @@ cat > "$APP/Info.plist" <<PLIST
   <key>ApplarchyFlavor</key><string>$FLAVOR</string>
   <key>ApplarchyCommit</key><string>$COMMIT</string>
   <key>ApplarchySaverBundle</key><string>$APP_NAME.saver</string>
+  <key>ApplarchyHandoffID</key><string>$HANDOFF_ID</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>LSApplicationCategoryType</key><string>public.app-category.entertainment</string>
   <key>LSUIElement</key><true/>
