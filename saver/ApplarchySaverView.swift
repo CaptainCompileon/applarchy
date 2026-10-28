@@ -177,8 +177,12 @@ final class ApplarchySaverView: ScreenSaverView {
     /// screen) without calling startAnimation, so an instance that settled on the logo
     /// last time would stay frozen. Start it animating again.
     @objc private func didStart(_ note: Notification) {
-        guard !isPreview, settling || holding else { return }
-        os_log("didstart: resuming from the settled logo", log: Self.log, type: .default)
+        guard !isPreview, followsScreensaverStop, settling || holding else { return }   // not the wallpaper's views
+        guard onScreen else {
+            os_log("didstart: %{public}@ stays idle (not on screen)", log: Self.log, type: .default, instanceID)
+            return
+        }
+        os_log("didstart: %{public}@ resuming from the settled logo", log: Self.log, type: .default, instanceID)
         settling = false
         holding = false
         holdRemaining = 0
@@ -205,8 +209,8 @@ final class ApplarchySaverView: ScreenSaverView {
         settling = false
         applyBundleConfig()
         layoutGrid()
-        os_log("start %{public}dx%{public}d grid %{public}dx%{public}d %{public}d fps preview=%{public}d", log: Self.log, type: .default,
-               Int(bounds.width), Int(bounds.height), cols, rows, Int((1 / animationTimeInterval).rounded()), isPreview ? 1 : 0)
+        os_log("start %{public}@ %{public}dx%{public}d grid %{public}dx%{public}d %{public}d fps preview=%{public}d", log: Self.log, type: .default,
+               instanceID, Int(bounds.width), Int(bounds.height), cols, rows, Int((1 / animationTimeInterval).rounded()), isPreview ? 1 : 0)
         startEffect()
     }
 
@@ -223,7 +227,7 @@ final class ApplarchySaverView: ScreenSaverView {
         if smoothTransition && !isPreview {
             // The mouse moved: play out the current effect quickly, pause on the logo,
             // and tell the desktop when settling began.
-            guard !settling else { return }
+            guard !settling, onScreen else { return }
             settling = true
             if holdRemaining > 0 { holdRemaining = 0; holding = true }     // between effects: already settled
             if var h = announced, !holding {
@@ -239,6 +243,15 @@ final class ApplarchySaverView: ScreenSaverView {
     }
 
     private static let log = OSLog(subsystem: "com.applarchy.screensaver", category: "saver")
+
+    /// Whether this instance's window is showing. macOS keeps earlier screensaver
+    /// instances alive (and hidden) after it closes; only one on screen may announce,
+    /// settle or resume, or they all write to the same screen's handoff.
+    private var onScreen: Bool { window?.isVisible == true }
+    /// Short instance id for the log, to tell the instances in one host apart.
+    private var instanceID: String {
+        String(UInt(bitPattern: ObjectIdentifier(self).hashValue) & 0xFFFFF, radix: 16) + (onScreen ? "" : " (hidden)")
+    }
 
     override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
@@ -302,7 +315,7 @@ final class ApplarchySaverView: ScreenSaverView {
         os_log("effect %{public}@ %{public}@", log: Self.log, type: .default, name, saver == nil ? "FAILED" : "ok")
         engineFrames = 0
         holdRemaining = 0
-        if smoothTransition, !isPreview, saver != nil {
+        if smoothTransition, !isPreview, saver != nil, onScreen {
             let h = Handoff(command: name, seed: seed, startedAt: Date(), size: bounds.size)
             announced = h
             announce(h)
@@ -316,8 +329,8 @@ final class ApplarchySaverView: ScreenSaverView {
         let board = Handoff.pasteboard(for: h.size)
         board.clearContents()
         let ok = board.setString(h.payload, forType: .string)
-        os_log("announced %{public}@%{public}@ for %{public}dx%{public}d (pasteboard %{public}@)", log: Self.log, type: .default,
-               String(h.command.split(separator: " ").first { !$0.hasPrefix("-") && !$0.allSatisfy(\.isHexDigit) } ?? ""),
+        os_log("%{public}@ announced %{public}@%{public}@ for %{public}dx%{public}d (pasteboard %{public}@)", log: Self.log, type: .default,
+               instanceID, String(h.command.split(separator: " ").first { !$0.hasPrefix("-") && !$0.allSatisfy(\.isHexDigit) } ?? ""),
                h.settleAt == nil ? "" : " settling", Int(h.size.width), Int(h.size.height), ok ? "ok" : "FAILED")
     }
 

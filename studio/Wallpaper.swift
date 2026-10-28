@@ -1,6 +1,7 @@
 import AppKit
 import IOKit.ps
 import ScreenSaver
+import os.log
 
 /// The live wallpaper: one borderless window per screen at desktop level
 /// (behind the icons), on every Space, ignoring the mouse. Rendering pauses
@@ -23,6 +24,9 @@ final class Wallpaper: NSObject, ObservableObject {
     private var windows: [NSWindow] = []
     private var views: [StudioEffectView] = []
     private var systemPaused = false
+    /// The screen is locked: the screensaver keeps running on the lock screen.
+    private var locked = false
+    private static let log = OSLog(subsystem: "com.applarchy.app", category: "wallpaper")
 
     var isRunning: Bool { config != nil }
 
@@ -37,6 +41,7 @@ final class Wallpaper: NSObject, ObservableObject {
         let dnc = DistributedNotificationCenter.default()
         dnc.addObserver(self, selector: #selector(systemPause), name: .init("com.apple.screensaver.didstart"), object: nil)
         dnc.addObserver(self, selector: #selector(systemResume), name: .init("com.apple.screensaver.didstop"), object: nil)
+        dnc.addObserver(self, selector: #selector(screensaverWillStop), name: .init("com.apple.screensaver.willstop"), object: nil)
         // Power: battery/AC changes and Low Power Mode.
         let context = Unmanaged.passUnretained(self).toOpaque()
         if let source = IOPSNotificationCreateRunLoopSource({ context in
@@ -50,7 +55,7 @@ final class Wallpaper: NSObject, ObservableObject {
         dnc.addObserver(self, selector: #selector(receivedHandoff(_:)), name: StudioEffectView.Handoff.notification, object: nil,
                         suspensionBehavior: .deliverImmediately)
         dnc.addObserver(self, selector: #selector(screenLocked), name: .init("com.apple.screenIsLocked"), object: nil)
-        dnc.addObserver(self, selector: #selector(systemResume), name: .init("com.apple.screenIsUnlocked"), object: nil)
+        dnc.addObserver(self, selector: #selector(screenUnlocked), name: .init("com.apple.screenIsUnlocked"), object: nil)
     }
 
     /// The screensaver's latest announcement for a screen size: from its pasteboard
@@ -68,10 +73,27 @@ final class Wallpaper: NSObject, ObservableObject {
     /// Smooth mode: locking the screen starts the screensaver straight away, so the
     /// lock screen plays the animation; unlocking hands it back to the desktop.
     @objc private func screenLocked() {
+        locked = true
         guard config?.smoothTransition == true else { return }
         systemPause()
         NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: "/System/Library/CoreServices/ScreenSaverEngine.app"),
                                            configuration: NSWorkspace.OpenConfiguration())
+    }
+
+    @objc private func screenUnlocked() {
+        locked = false
+        systemResume()
+    }
+
+    /// The screensaver is closing because the mouse moved. macOS doesn't reliably send
+    /// didstop, so resume here too: a moment later, so the screensaver's "settling"
+    /// announcement is in first. Not while locked: the screensaver then keeps running
+    /// on the lock screen, and unlocking resumes.
+    @objc private func screensaverWillStop() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [self] in
+            guard !locked else { return }
+            systemResume()
+        }
     }
 
     @objc private func receivedHandoff(_ note: Notification) {
@@ -163,8 +185,13 @@ final class Wallpaper: NSObject, ObservableObject {
     }
 
     @objc private func occlusionChanged() { updateAnimation() }
-    @objc private func systemPause() { systemPaused = true; updateAnimation() }
+    @objc private func systemPause() {
+        os_log("pause", log: Self.log, type: .default)
+        systemPaused = true
+        updateAnimation()
+    }
     @objc private func systemResume() {
+        os_log("resume%{public}@", log: Self.log, type: .default, config?.smoothTransition == true ? " (smooth: picking up the handoff)" : "")
         systemPaused = false
         if config?.smoothTransition == true {
             // Pick up the screensaver's latest effect on each screen, from where it is now.
