@@ -182,6 +182,10 @@ final class ApplarchySaverView: ScreenSaverView {
     var holdsWhenDone = false
     var handoff: Handoff?
     private var holding = false
+    /// The effect is over and the view holds its last frame.
+    var isHolding: Bool { holding }
+    /// Hold mode: called when the handoff reaches its last frame.
+    var onHold: (() -> Void)?
     /// Playing out the current effect at settleSpeed, then pausing.
     private var settling = false
     /// The effect the screensaver is playing, as announced.
@@ -479,6 +483,7 @@ final class ApplarchySaverView: ScreenSaverView {
         if !fastForward(to: max(h.frame(at: Date()), 1)) {             // already finished: hold its last frame
             endEffect()
             holding = true
+            onHold?()
         }
         os_log("handoff %{public}@ at frame %{public}d%{public}@", log: Self.log, type: .default, h.command, engineFrames, holding ? " (finished)" : "")
     }
@@ -522,7 +527,7 @@ final class ApplarchySaverView: ScreenSaverView {
         }
         if finished || engineFrames >= maxEngineFrames {
             endEffect()
-            if holdsWhenDone || settling { holding = true; return }
+            if holdsWhenDone || settling { holding = true; if holdsWhenDone { onHold?() }; return }
             if sharesTimeline { holding = true; Timeline.shared.finish(self); return }   // the next starts on every screen together
             holdRemaining = holdTicks
         }
