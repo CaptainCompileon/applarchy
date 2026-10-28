@@ -267,8 +267,8 @@ struct ContentView: View {
             optionRow("Wallpaper") {
                 PixelSegmented(selection: Binding(get: { "\(wallpaper.options.fps)" },
                                                   set: { wallpaper.options.fps = Int($0) ?? 30 }),
-                               options: [("30", "30 FPS"), ("15", "15 FPS")])
-                    .frame(width: 190)
+                               options: [("60", "60 FPS"), ("30", "30 FPS"), ("15", "15 FPS")])
+                    .frame(width: 285)
                 Toggle("Pause on battery", isOn: $wallpaper.options.pauseOnBattery).toggleStyle(PixelCheckboxStyle())
                 Toggle("Pause in Low Power Mode", isOn: $wallpaper.options.pauseInLowPowerMode).toggleStyle(PixelCheckboxStyle())
             }
