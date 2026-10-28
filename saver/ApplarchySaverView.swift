@@ -58,6 +58,9 @@ final class ApplarchySaverView: ScreenSaverView {
     private var baseline: CGFloat = 0
     private var cells: [Cell] = []
     private var glyphCache: [UInt32: (CTFont, CGGlyph)] = [:]
+    /// The furthest any cached glyph's ink reaches outside its cell, in points.
+    private var overhang: CGFloat = 0
+    private var overhangGrew = false
     /// Logo file in the bundle's Resources, without ".txt".
     var logoName = "screensaver" { didSet { logo = currentLogo() } }
     /// Text art used when logoName is "custom".
@@ -139,6 +142,7 @@ final class ApplarchySaverView: ScreenSaverView {
         cells = Array(repeating: Cell(), count: cols * rows)
         previous = []
         glyphCache.removeAll()
+        overhang = 0
         makeBitmap()
         invalidateAll()
     }
@@ -253,27 +257,54 @@ final class ApplarchySaverView: ScreenSaverView {
         CGPoint(x: floor((bounds.width - CGFloat(cols) * cellW) / 2), y: floor((bounds.height - CGFloat(rows) * cellH) / 2))
     }
 
-    /// Redraw only the cells that differ from the last frame, a run per row
-    /// (padded a cell each side for glyphs that overhang their cell).
+    /// Redraw only the cells that differ from the last frame (padded a cell each
+    /// side for glyphs that overhang their cell). Drawing into our own bitmap, an
+    /// extra rect is cheap but every pixel costs, so redraw just the runs of changed
+    /// cells. Drawing into the window, each dirty rect is costly to composite, so
+    /// take a run per row and merge overlapping runs on consecutive rows into one
+    /// band: effects that change most of the screen (matrix) then redraw a few
+    /// large rects, not one per row.
     private func invalidateChangedCells() {
-        guard previous.count == cells.count else { invalidateAll(); return }
+        guard previous.count == cells.count, !overhangGrew else { overhangGrew = false; invalidateAll(); return }
         let o = gridOrigin
+        // Padded for glyphs that overhang their cell: a cell's width sideways (plus any
+        // more some glyph reaches), and the reach above and below. Whole points: a
+        // fractional clip sends every fill down CoreGraphics' slow masked path.
+        let padX = max(1, overhang - cellW), padY = max(1, overhang)
+        func invalidateCells(rows r0: Int, _ r1: Int, cols c0: Int, _ c1: Int) {
+            let c0 = max(0, c0 - 1), c1 = min(cols - 1, c1 + 1)
+            invalidate(NSRect(x: o.x + CGFloat(c0) * cellW - padX, y: o.y + CGFloat(r0) * cellH - padY,
+                              width: CGFloat(c1 - c0 + 1) * cellW + 2 * padX, height: CGFloat(r1 - r0 + 1) * cellH + 2 * padY).integral)
+        }
+        var band: (r0: Int, r1: Int, c0: Int, c1: Int)?
+        func flush() {
+            if let b = band { invalidateCells(rows: b.r0, b.r1, cols: b.c0, b.c1) }
+            band = nil
+        }
+        var runs: [(first: Int, last: Int)] = []
         cells.withUnsafeBufferPointer { now in
             previous.withUnsafeBufferPointer { old in
                 for r in 0..<rows {
                     let base = r * cols
-                    var first = -1, last = -1
+                    runs.removeAll(keepingCapacity: true)
                     for c in 0..<cols where now[base + c] != old[base + c] {
-                        if first < 0 { first = c }
-                        last = c
+                        if let run = runs.last, c - run.last <= 4 { runs[runs.count - 1].last = c } else { runs.append((c, c)) }
                     }
-                    guard first >= 0 else { continue }
-                    let c0 = max(0, first - 1), c1 = min(cols - 1, last + 1)
-                    invalidate(NSRect(x: o.x + CGFloat(c0) * cellW - 1, y: o.y + CGFloat(r) * cellH - 1,
-                                           width: CGFloat(c1 - c0 + 1) * cellW + 2, height: cellH + 2))
+                    guard let first = runs.first?.first, let last = runs.last?.last else { flush(); continue }
+                    if bitmap != nil {
+                        for run in runs { invalidateCells(rows: r, r, cols: run.first, run.last) }
+                        continue
+                    }
+                    if let b = band, first <= b.c1 + 2, last >= b.c0 - 2 {     // overlapping once padded
+                        band = (b.r0, r, min(b.c0, first), max(b.c1, last))
+                    } else {
+                        flush()
+                        band = (r, r, first, last)
+                    }
                 }
             }
         }
+        flush()
     }
 
     private func parse(_ bytes: UnsafeBufferPointer<UInt8>) {
@@ -281,6 +312,7 @@ final class ApplarchySaverView: ScreenSaverView {
         var fg: UInt32 = 0xC0C0C0, bg: UInt32 = 0xFFFF_FFFF
         var i = 0
         let n = bytes.count
+        var params: [Int] = []          // reused: a frame has thousands of escape sequences
         for k in cells.indices { cells[k] = Cell() }
         while i < n {
             let b = bytes[i]
@@ -289,7 +321,7 @@ final class ApplarchySaverView: ScreenSaverView {
                 guard i < n else { break }
                 if bytes[i] != UInt8(ascii: "[") { i += 1; continue }   // ESC 7 / ESC 8
                 i += 1
-                var params: [Int] = []
+                params.removeAll(keepingCapacity: true)
                 var cur = 0, has = false
                 while i < n {
                     let c = bytes[i]
@@ -395,9 +427,17 @@ final class ApplarchySaverView: ScreenSaverView {
         }
     }
 
+    /// Colours by RGB value: every drawn cell needs one, and creating them was a
+    /// quarter of the drawing time. Effects fade through many shades, hence the cap.
+    private var colorCache: [UInt32: CGColor] = [:]
+
     private func color(_ rgb: UInt32) -> CGColor {
-        CGColor(red: CGFloat((rgb >> 16) & 0xFF) / 255, green: CGFloat((rgb >> 8) & 0xFF) / 255,
-                blue: CGFloat(rgb & 0xFF) / 255, alpha: 1)
+        if let hit = colorCache[rgb] { return hit }
+        if colorCache.count >= 4096 { colorCache.removeAll(keepingCapacity: true) }
+        let c = CGColor(red: CGFloat((rgb >> 16) & 0xFF) / 255, green: CGFloat((rgb >> 8) & 0xFF) / 255,
+                        blue: CGFloat(rgb & 0xFF) / 255, alpha: 1)
+        colorCache[rgb] = c
+        return c
     }
 
     /// Block elements (U+2580–U+259F) as exact rectangles, so the logo has no seams.
@@ -442,7 +482,16 @@ final class ApplarchySaverView: ScreenSaverView {
             CTFontGetGlyphsForCharacters(f, &units, &glyphs, units.count)
         }
         glyphCache[scalar] = (f, glyphs[0])
-        return glyphs[0] == 0 ? nil : (f, glyphs[0])
+        guard glyphs[0] != 0 else { return nil }
+        // Glyphs from fallback fonts can be taller or wider than a cell; dirty rects
+        // are padded by the most any glyph seen so far reaches outside its cell.
+        var ink = CGRect.zero
+        CTFontGetBoundingRectsForGlyphs(f, .horizontal, &glyphs, &ink, 1)
+        let below = cellH - baseline        // cell space under the baseline
+        let reach = ceil(max(ink.maxY - baseline, -ink.minY - below, -ink.minX, ink.maxX - cellW))
+        // It was just clipped to a rect padded for less: redraw everything next frame.
+        if reach > overhang { overhang = reach; overhangGrew = true }
+        return (f, glyphs[0])
     }
 
     // MARK: logo
