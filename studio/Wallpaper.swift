@@ -151,6 +151,7 @@ final class Wallpaper: NSObject, ObservableObject {
             view.maxEngineFrames = 200_000
             view.followsScreensaverStop = false
             view.bitmapScale = 1                    // 1x pixels, scaled up crisply: pixel art, cheap
+            view.matchesDisplayRate = false         // the picker's rate, which may be Auto
             view.animationTimeInterval = 1.0 / Double(options.rate(displayHz: screen.maximumFramesPerSecond))
             window.contentView = view
             window.orderFrontRegardless()

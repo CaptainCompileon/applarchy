@@ -75,11 +75,9 @@ struct WallpaperOptions: Codable, Equatable {
     static let auto = 0
 
     /// The frame rate to run on a display that refreshes up to `displayHz` (0: unknown).
-    /// Auto caps it at the engine's own 120 fps (a faster display would only repeat
-    /// frames) and falls back to 60 when macOS doesn't report a rate.
+    /// Auto follows the same rule as the screensaver (StudioEffectView.displayRate).
     func rate(displayHz: Int) -> Int {
-        guard fps == Self.auto else { return fps }
-        return displayHz > 0 ? min(displayHz, 120) : 60
+        fps == Self.auto ? StudioEffectView.displayRate(hz: displayHz) : fps
     }
 }
 
