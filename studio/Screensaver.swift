@@ -71,6 +71,13 @@ enum Screensaver {
         return true
     }
 
+    /// Switch the installed screensaver's smooth mode on or off, keeping its look.
+    static func setSmooth(_ on: Bool) {
+        guard var config = currentConfig, config.smoothTransition != on else { return }
+        config.smoothTransition = on
+        _ = try? apply(config)
+    }
+
     /// A downloaded app carries the quarantine flag, and copies of its files inherit
     /// it; the screensaver host won't load a quarantined plug-in. The user already
     /// approved this app, so its own screensaver is cleared.
