@@ -63,7 +63,7 @@ struct EffectConfig: Codable, Equatable {
 
 /// Wallpaper-only settings; they apply to the running wallpaper immediately.
 struct WallpaperOptions: Codable, Equatable {
-    var fps = 30
+    var fps = 30                      // 60, 30 or 15
     var pauseOnBattery = false
     var pauseInLowPowerMode = true
 }
