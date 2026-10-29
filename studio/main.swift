@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 /// Applarchy: pick Omarchy's ttfx effects and use them as the screensaver or as a
@@ -6,6 +7,7 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDelegate {
     private var window: NSWindow?
     private var statusItem: NSStatusItem!
+    private var updateBadge: AnyCancellable?
     private let background = CommandLine.arguments.contains("--background")
 
     func applicationDidFinishLaunching(_ note: Notification) {
@@ -20,6 +22,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         if !AppIdentity.isDev {          // a dev build leaves earlier installs and update notices to the released app
             migrateEarlierVersions()
             Updates.shared.start()
+        } else if ProcessInfo.processInfo.environment["APPLARCHY_PRETEND_VERSION"] != nil {
+            Updates.shared.start()       // trying the update notices on a dev build
         }
         Wallpaper.shared.restore()
         buildMainMenu()
@@ -67,6 +71,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let main = NSMenu()
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
+        appMenu.addItem(item("Check for Updates…", #selector(checkForUpdates)))
+        appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Quit \(AppIdentity.name)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
         main.addItem(appItem)
@@ -86,6 +92,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let menu = NSMenu()
         menu.delegate = self
         statusItem.menu = menu
+        // A dot on the icon while an update is available.
+        updateBadge = Updates.shared.$available.receive(on: RunLoop.main).sink { [weak self] update in
+            self?.statusItem.button?.image = PixelIcon.storm.templateImage(badge: update != nil)
+            self?.statusItem.button?.image?.accessibilityDescription = AppIdentity.name + (update == nil ? "" : ", update available")
+        }
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
@@ -101,10 +112,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         } else {
             menu.addItem(withTitle: "Wallpaper: Off", action: nil, keyEquivalent: "").isEnabled = false
         }
+        menu.addItem(.separator())
         if let update = Updates.shared.available {
-            menu.addItem(.separator())
             menu.addItem(item("Update Available: Applarchy \(update.version)…", #selector(openUpdate)))
         }
+        menu.addItem(item("Check for Updates…", #selector(checkForUpdates)))
         menu.addItem(.separator())
         menu.addItem(item("Quit \(AppIdentity.name)", #selector(NSApplication.terminate(_:)), target: NSApp))
     }
@@ -120,8 +132,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         DispatchQueue.main.async { NotificationCenter.default.post(name: .showTutorial, object: nil) }
     }
 
-    @objc private func openUpdate() {
-        if let url = Updates.shared.available?.url { NSWorkspace.shared.open(url) }
+    @objc private func openUpdate() { Updates.shared.download() }
+
+    /// Check now and say how it went: the update prompt if there's one, else a short alert.
+    @objc private func checkForUpdates() {
+        Updates.shared.check { [weak self] result in
+            let alert = NSAlert()
+            switch result {
+            case .available:
+                Updates.shared.showPrompt()
+                self?.showWindow()
+                return
+            case .upToDate(let version):
+                alert.messageText = "Applarchy is up to date"
+                alert.informativeText = "\(version) is the latest version."
+            case .failed(let reason):
+                alert.alertStyle = .warning
+                alert.messageText = "Couldn't check for updates"
+                alert.informativeText = reason.prefix(1).uppercased() + reason.dropFirst() + "."
+            }
+            NSApp.activate(ignoringOtherApps: true)
+            alert.runModal()
+        }
     }
 
     @objc private func togglePause() { Wallpaper.shared.paused.toggle() }
@@ -154,6 +186,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     /// animated for a while. Selection from OMARCHY_SNAPSHOT ("effects;logo;clock;focus;tutorial;theme");
     /// OMARCHY_SNAPSHOT_APPEARANCE=light renders the Light appearance (default: dark).
     private func windowSnapshot(to path: String) {
+        if ProcessInfo.processInfo.environment["APPLARCHY_PRETEND_VERSION"] != nil { Updates.shared.check() }   // the update prompt
         let spec = (ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT"] ?? "").split(separator: ";", omittingEmptySubsequences: false).map(String.init)
         func field(_ i: Int) -> String { i < spec.count ? spec[i] : "" }
         let effects = field(0).isEmpty ? Catalog.allIDs : field(0).split(separator: ",").map(String.init)
