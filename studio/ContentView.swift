@@ -263,17 +263,27 @@ struct ContentView: View {
                 .disabled(!draft.showClock)
                 .opacity(draft.showClock ? 1 : 0.35)
             }
-            if mode == "custom" {
             optionRow("Wallpaper") {
                 PixelSegmented(selection: Binding(get: { "\(wallpaper.options.fps)" },
                                                   set: { wallpaper.options.fps = Int($0) ?? 30 }),
-                               options: [("60", "60 FPS"), ("30", "30 FPS"), ("15", "15 FPS")])
-                    .frame(width: 285)
+                               options: [("\(WallpaperOptions.auto)", "AUTO"), ("120", "120"), ("60", "60"), ("30", "30"), ("15", "15")])
+                    .frame(width: 330)
+                Text(fpsNote).foregroundStyle(.secondary)
+            }
+            optionRow("") {
                 Toggle("Pause on battery", isOn: $wallpaper.options.pauseOnBattery).toggleStyle(PixelCheckboxStyle())
                 Toggle("Pause in Low Power Mode", isOn: $wallpaper.options.pauseInLowPowerMode).toggleStyle(PixelCheckboxStyle())
             }
-            }
         }
+    }
+
+    /// After the frame-rate picker: "FPS", or for auto what it comes to on the displays.
+    private var fpsNote: String {
+        guard wallpaper.options.fps == WallpaperOptions.auto else { return "FPS" }
+        var seen = Set<Int>()
+        let rates = NSScreen.screens.map { wallpaper.options.rate(displayHz: $0.maximumFramesPerSecond) }
+            .filter { seen.insert($0).inserted }
+        return "= " + (rates.isEmpty ? "60" : rates.map(String.init).joined(separator: "/")) + " FPS"
     }
 
     private func optionRow<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {

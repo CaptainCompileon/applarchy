@@ -67,9 +67,18 @@ struct EffectConfig: Codable, Equatable {
 
 /// Wallpaper-only settings; they apply to the running wallpaper immediately.
 struct WallpaperOptions: Codable, Equatable {
-    var fps = 30                      // 60, 30 or 15
+    var fps = 30                      // 120, 60, 30 or 15, or auto
     var pauseOnBattery = false
     var pauseInLowPowerMode = true
+
+    /// `fps` for "match each display's refresh rate".
+    static let auto = 0
+
+    /// The frame rate to run on a display that refreshes up to `displayHz` (0: unknown).
+    /// Auto follows the same rule as the screensaver (StudioEffectView.displayRate).
+    func rate(displayHz: Int) -> Int {
+        fps == Self.auto ? StudioEffectView.displayRate(hz: displayHz) : fps
+    }
 }
 
 /// The app's saved state.
