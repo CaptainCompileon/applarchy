@@ -6,7 +6,6 @@ struct ContentView: View {
     @ObservedObject private var updates = Updates.shared
     @State private var editingLogo = false
     @State private var showingLogoLibrary = false
-    @ObservedObject private var logoLibrary = LogoLibrary.shared
     @State private var editingTheme = false
     @State private var draft: EffectConfig
     @State private var focused: String?          // effect previewed on its own
@@ -274,9 +273,7 @@ struct ContentView: View {
                 if draft.logo == "custom" {
                     Button("Edit…") { editingLogo = true }.buttonStyle(PixelButtonStyle())
                 }
-                if !logoLibrary.logos.isEmpty {
-                    Button("My Logos…") { showingLogoLibrary = true }.buttonStyle(PixelButtonStyle())
-                }
+                Button("My Logos…") { showingLogoLibrary = true }.buttonStyle(PixelButtonStyle())   // also where IMPORT… is
             }
             optionRow("Theme") {
                 HStack(spacing: 6) {
