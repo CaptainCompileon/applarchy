@@ -34,7 +34,7 @@ enum LockScreen {
             let url = folder.appendingPathComponent("lock-\(uuid.prefix(8))-\(stamp).png")
             guard let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]),
                   (try? data.write(to: url)) != nil else { continue }
-            let bg = Themes.named(config.theme).background
+            let bg = Themes.named(config.theme, custom: config.customTheme).background
             try? NSWorkspace.shared.setDesktopImageURL(url, for: screen, options: [
                 .imageScaling: NSImageScaling.scaleProportionallyUpOrDown.rawValue,
                 .allowClipping: true,
