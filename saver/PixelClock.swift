@@ -71,6 +71,16 @@ enum PixelClock {
         return (style.showDate ? 7 * m.date + m.gap : 0) + 7 * m.time
     }
 
+    /// The date line, formatted at most once a second (the clock may be drawn many times a frame).
+    private static var dateCache: (second: Int, text: String)?
+    private static func dateString(_ date: Date) -> String {
+        let second = Int(date.timeIntervalSinceReferenceDate)
+        if let c = dateCache, c.second == second { return c.text }
+        let text = dateFormatter.string(from: date).folding(options: .diacriticInsensitive, locale: nil).uppercased()
+        dateCache = (second, text)
+        return text
+    }
+
     static func draw(in bounds: CGRect, top: CGFloat, style: ClockStyle = ClockStyle(), _ ctx: CGContext) {
         let now = Date()
         let m = metrics(style, bounds)
@@ -78,7 +88,7 @@ enum PixelClock {
         let r = CGFloat(c >> 16 & 0xFF) / 255, g = CGFloat(c >> 8 & 0xFF) / 255, b = CGFloat(c & 0xFF) / 255
         var y = top
         if style.showDate {
-            let date = dateFormatter.string(from: now).folding(options: .diacriticInsensitive, locale: nil).uppercased()
+            let date = dateString(now)
             ctx.setFillColor(CGColor(red: r * 0.66, green: g * 0.66, blue: b * 0.66, alpha: 0.92))
             drawText(date, pixel: m.date, centreX: bounds.midX, top: y, ctx)
             y += 7 * m.date + m.gap
