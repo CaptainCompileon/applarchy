@@ -15,13 +15,13 @@ struct TutorialOverlay: View {
              body: "Tick one, a few, or all of them. Your picks play in random order, each once before any repeat. Click an effect's name to preview just that one, and click the preview to see it full screen.",
              picture: .list),
         Step(title: "Choose your vibe",
-             body: "Go Chill Guy with the small logo, Apple Evangelist with the big one, or type your own text art. Pick one of 9 colour themes or mix your own, and add a pixel clock: with the date, 12 or 24 hours, small or large.",
-             picture: .pair(Shot(title: "Chill Guy", effects: ["highlight"], logo: "apple-small", clock: true, theme: "tokyo-night"),
-                            Shot(title: "Apple Evangelist", effects: ["highlight"], logo: "apple", clock: false, theme: "rose-pine"))),
+             body: "Go Chill Guy, or make your own logo from a picture or text art and touch it up square by square. Pick one of 9 colour themes or mix your own, and add a pixel clock: with the date, 12 or 24 hours, small or large.",
+             picture: .pair(Shot(title: "Tokyo Night", effects: ["highlight"], logo: "apple-small", clock: true, theme: "tokyo-night"),
+                            Shot(title: "Rosé Pine", effects: ["highlight"], logo: "apple-small", clock: false, theme: "rose-pine"))),
         Step(title: "Smooth or custom",
              body: "SMOOTH MODE, the default, gives you one look everywhere: screensaver, lock screen and desktop, with the animation carrying on as you unlock. CUSTOM sets the screensaver and wallpaper separately. The menu bar icon pauses or turns off the wallpaper any time.",
              picture: .pair(Shot(title: "Screensaver", effects: ["matrix", "decrypt"], logo: "apple-small", clock: true),
-                            Shot(title: "Wallpaper", effects: ["thunderstorm"], logo: "apple", clock: false))),
+                            Shot(title: "Wallpaper", effects: ["thunderstorm"], logo: "apple-small", clock: false))),
     ]
 
     var body: some View {
