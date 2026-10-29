@@ -151,6 +151,7 @@ struct CustomLogoEditor: View {
                         .aspectRatio(16.0 / 10.0, contentMode: .fit)
                         .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.3), lineWidth: 1.5))
                     Text("PREVIEW").foregroundStyle(.secondary)
+                    original.padding(.top, 8)
                 }
                 .frame(width: 300)
             }
@@ -172,6 +173,34 @@ struct CustomLogoEditor: View {
             }
         }
         .padding(24)
+    }
+
+    /// The picture chosen while the editor is open, to compare against. Only ever in
+    /// memory: closing the editor (or pasting, blanking, picking a saved logo) lets it go.
+    private var original: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            picture
+            Text("ORIGINAL PICTURE").foregroundStyle(.secondary)
+        }
+    }
+
+    private var picture: some View {
+        Group {
+            if let image {
+                Image(decorative: image, scale: 1)
+                    .resizable()
+                    .interpolation(.high)
+                    .aspectRatio(contentMode: .fit)
+                    .padding(8)
+            } else {
+                Text("A picture you choose shows here while you edit, to compare. It isn't kept.")
+                    .foregroundStyle(.secondary).lineSpacing(3).multilineTextAlignment(.center)
+                    .padding(16)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black)
+        .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.3), lineWidth: 1.5))
     }
 
     /// Replace the logo (a picture, paste, blank or saved one), undoably.
