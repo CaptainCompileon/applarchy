@@ -153,8 +153,27 @@ Without `APPLARCHY_FLAVOR=release`, `scripts/build.sh` and `scripts/package-dmg.
 `dist/Applarchy DEV.app` and `dist/Applarchy-DEV-<version>.dmg`.
 
 Builds are **universal** (Apple Silicon + Intel) when [rustup](https://rustup.rs) has the Intel target
-(`rustup target add x86_64-apple-darwin`), and Apple Silicon only otherwise. Every version tag is
-also built on GitHub Actions, which attaches the DMG to the release.
+(`rustup target add x86_64-apple-darwin`), and Apple Silicon only otherwise. GitHub Actions builds
+every pull request (`.github/workflows/build.yml`), with the DMG as a downloadable artifact.
+
+### Releases (maintainers)
+
+Every push to `main` that changes the app is released automatically (`.github/workflows/release.yml`):
+the version is worked out from the **labels of the pull requests merged since the last release**,
+the DMG is built, and the GitHub release `vX.Y[.Z]` is created with it. Changes to Markdown and
+`docs/` alone aren't released. A pull request's checks say what merging it would release as.
+
+| Label | Bump | When |
+|---|---|---|
+| `release: major` (or `breaking`) | 2.4 → **3.0** | Something users rely on goes away or works differently: a mode, setting or effect removed or renamed; settings or the installed screensaver/wallpaper don't carry over from the previous version; a higher minimum macOS; a redesign of how the app is used. |
+| `release: minor` (or `enhancement`, `feature`) | 2.4 → **2.5** | Something new that's visible to users, and everything that worked before still does: a new effect, option, mode or behaviour. |
+| `release: patch` (or `bug`, or **no label**) | 2.4 → **2.4.1** | Fixes, performance, polish. |
+| `release: skip` | none | CI, tooling or docs: released only with the next real change. |
+
+If several pull requests land together, the biggest bump wins. A commit pushed straight to `main`
+counts as a patch (`BREAKING` in its message: major; `[skip release]`: none). To choose a version by
+hand, set it in `VERSION`: when that's ahead of the latest release it's released as it is. Or run
+**Actions → Release** with a bump. `scripts/next-version.sh` prints what `main` would release as.
 
 ### Signing and notarization (maintainers)
 
