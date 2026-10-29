@@ -134,16 +134,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     @objc private func openUpdate() { Updates.shared.download() }
 
-    /// Check now and say how it went, whatever the answer.
+    /// Check now and say how it went: the update prompt if there's one, else a short alert.
     @objc private func checkForUpdates() {
-        Updates.shared.check { result in
+        Updates.shared.check { [weak self] result in
             let alert = NSAlert()
             switch result {
-            case .available(let release):
-                alert.messageText = "Applarchy \(release.version) is available"
-                alert.informativeText = (release.highlights.map { "• " + $0 } + ["", "You have \(Updates.shared.current)."]).joined(separator: "\n")
-                alert.addButton(withTitle: "Download…")
-                alert.addButton(withTitle: "Later")
+            case .available:
+                Updates.shared.showPrompt()
+                self?.showWindow()
+                return
             case .upToDate(let version):
                 alert.messageText = "Applarchy is up to date"
                 alert.informativeText = "\(version) is the latest version."
@@ -153,10 +152,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
                 alert.informativeText = reason.prefix(1).uppercased() + reason.dropFirst() + "."
             }
             NSApp.activate(ignoringOtherApps: true)
-            let answer = alert.runModal()
-            if case .available = result {
-                if answer == .alertFirstButtonReturn { Updates.shared.download() } else { Updates.shared.dismiss() }
-            }
+            alert.runModal()
         }
     }
 
@@ -190,7 +186,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     /// animated for a while. Selection from OMARCHY_SNAPSHOT ("effects;logo;clock;focus;tutorial;theme");
     /// OMARCHY_SNAPSHOT_APPEARANCE=light renders the Light appearance (default: dark).
     private func windowSnapshot(to path: String) {
-        if ProcessInfo.processInfo.environment["APPLARCHY_PRETEND_VERSION"] != nil { Updates.shared.check() }   // the update banner
+        if ProcessInfo.processInfo.environment["APPLARCHY_PRETEND_VERSION"] != nil { Updates.shared.check() }   // the update prompt
         let spec = (ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT"] ?? "").split(separator: ";", omittingEmptySubsequences: false).map(String.init)
         func field(_ i: Int) -> String { i < spec.count ? spec[i] : "" }
         let effects = field(0).isEmpty ? Catalog.allIDs : field(0).split(separator: ",").map(String.init)
