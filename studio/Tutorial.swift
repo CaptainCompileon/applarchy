@@ -12,14 +12,14 @@ struct TutorialOverlay: View {
              body: "Omarchy's 37 terminal text effects, running natively on your Mac — over the Apple logo, in glorious pixel art.",
              picture: .live),
         Step(title: "Pick your effects",
-             body: "Tick one, a few, or all of them. Your picks play in random order, each once before any repeat. Click an effect's name to preview just that one.",
+             body: "Tick one, a few, or all of them. Your picks play in random order, each once before any repeat. Click an effect's name to preview just that one, and click the preview to see it full screen.",
              picture: .list),
         Step(title: "Choose your vibe",
-             body: "Go Chill Guy with the small logo, or Apple Evangelist with the big one. The screensaver can also show a pixel clock.",
-             picture: .pair(Shot(title: "Chill Guy", effects: ["highlight"], logo: "apple-small", clock: false),
-                            Shot(title: "Apple Evangelist", effects: ["highlight"], logo: "apple", clock: false))),
+             body: "Go Chill Guy with the small logo, Apple Evangelist with the big one, or type your own text art. Pick one of 9 colour themes or mix your own, and add a pixel clock: with the date, 12 or 24 hours, small or large.",
+             picture: .pair(Shot(title: "Chill Guy", effects: ["highlight"], logo: "apple-small", clock: true, theme: "tokyo-night"),
+                            Shot(title: "Apple Evangelist", effects: ["highlight"], logo: "apple", clock: false, theme: "rose-pine"))),
         Step(title: "Smooth or custom",
-             body: "SMOOTH MODE gives you one look everywhere: screensaver, lock screen and desktop, with the animation carrying on as you unlock. CUSTOM sets the screensaver and wallpaper separately. The menu bar icon pauses or stops it any time.",
+             body: "SMOOTH MODE, the default, gives you one look everywhere: screensaver, lock screen and desktop, with the animation carrying on as you unlock. CUSTOM sets the screensaver and wallpaper separately. The menu bar icon pauses or turns off the wallpaper any time.",
              picture: .pair(Shot(title: "Screensaver", effects: ["matrix", "decrypt"], logo: "apple-small", clock: true),
                             Shot(title: "Wallpaper", effects: ["thunderstorm"], logo: "apple", clock: false))),
     ]
@@ -157,9 +157,10 @@ struct Shot: View {
     let effects: [String]
     let logo: String
     let clock: Bool
+    var theme = "omarchy"
     var body: some View {
         VStack(spacing: 10) {
-            PreviewView(effects: effects, logo: logo, showClock: clock)
+            PreviewView(effects: effects, logo: logo, showClock: clock, theme: theme)
                 .aspectRatio(16.0 / 10.0, contentMode: .fit)
                 .overlay(Rectangle().strokeBorder(Color.white.opacity(0.2), lineWidth: 1.5))
                 .shadow(color: .black.opacity(0.5), radius: 10, y: 4)
