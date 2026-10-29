@@ -64,6 +64,12 @@ struct ContentView: View {
                 TutorialOverlay(isPresented: $showTutorial)
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
                     .zIndex(1)
+            } else if let release = updates.prompt {
+                UpdatePrompt(release: release, installed: updates.current,
+                             download: { withAnimation(.easeOut(duration: 0.15)) { updates.download() } },
+                             later: { withAnimation(.easeOut(duration: 0.15)) { updates.dismiss() } })
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                    .zIndex(1)
             }
         }
         .frame(minWidth: 980, minHeight: 760)
@@ -227,7 +233,7 @@ struct ContentView: View {
             }
             if let update = updates.available {
                 statusRow(title: "Update", value: "Applarchy \(update.version) is available") {
-                    Button("Download…") { NSWorkspace.shared.open(update.url) }.buttonStyle(PixelButtonStyle())
+                    Button("Download…") { updates.download() }.buttonStyle(PixelButtonStyle(prominent: true))
                 }
             }
         }

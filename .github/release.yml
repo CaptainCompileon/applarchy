@@ -1,0 +1,14 @@
+# Groups GitHub's generated release notes (gh release create --generate-notes, in
+# workflows/release.yml) by the pull requests' release labels.
+changelog:
+  exclude:
+    labels: ["release: skip"]
+  categories:
+    - title: Breaking changes
+      labels: ["release: major", breaking]
+    - title: New
+      labels: ["release: minor", enhancement, feature]
+    - title: Fixes
+      labels: ["release: patch", bug]
+    - title: Other changes
+      labels: ["*"]
