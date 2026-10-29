@@ -27,12 +27,22 @@ enum PixelClock {
         return (max(1, floor(date * s)), max(1, floor(time * s)), round(gap * s))
     }
 
-    private static let autoFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale.current
-        f.setLocalizedDateFormatFromTemplate("jmm")  // honours the system 12/24-hour setting
-        return f
-    }()
+    /// AUTO: whether the system shows 12-hour time, read again at most once a second, so
+    /// a change in System Settings shows up while the screensaver or wallpaper runs. The
+    /// time itself is always drawn with Latin digits and AM/PM, which the 5×7 font has.
+    private static var autoTwelveHour: (second: Int, value: Bool)?
+    private static func systemUsesTwelveHour(at date: Date) -> Bool {
+        let second = Int(date.timeIntervalSinceReferenceDate)
+        if let cached = autoTwelveHour, cached.second == second { return cached.value }
+        // The "24-hour time" switch, read from the preferences daemon (another process sets it).
+        CFPreferencesAppSynchronize(kCFPreferencesAnyApplication)
+        func forced(_ key: String) -> Bool { CFPreferencesCopyAppValue(key as CFString, kCFPreferencesAnyApplication) as? Bool == true }
+        let value = forced("AppleICUForce24HourTime") ? false
+            : forced("AppleICUForce12HourTime") ? true
+            : (DateFormatter.dateFormat(fromTemplate: "j", options: 0, locale: .autoupdatingCurrent) ?? "").contains("a")
+        autoTwelveHour = (second, value)
+        return value
+    }
 
     private static func fixedFormatter(_ format: String) -> DateFormatter {
         let f = DateFormatter()
@@ -51,8 +61,8 @@ enum PixelClock {
     }()
 
     static func timeString(_ style: ClockStyle = ClockStyle(), _ date: Date = Date()) -> String {
-        let f = style.hourCycle == "12" ? twelve : style.hourCycle == "24" ? twentyFour : autoFormatter
-        return f.string(from: date).uppercased()
+        let twelveHour = style.hourCycle == "12" || (style.hourCycle == "auto" && systemUsesTwelveHour(at: date))
+        return (twelveHour ? twelve : twentyFour).string(from: date).uppercased()
     }
 
     /// Height of the date + time block.
