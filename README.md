@@ -40,8 +40,8 @@ real macOS screensaver and as a live desktop wallpaper, with the effect engine c
 - **Themes** — Omarchy's own colours or eight of its themes: Tokyo Night, Catppuccin, Gruvbox, Nord,
   Everforest, Kanagawa, Rosé Pine and Matte Black. A theme recolours the effects, the background and
   the clock.
-- **Choose your vibe** — *Chill Guy* (small logo), *Apple Evangelist* (big logo), or your **own logo**
-  from any picture or pasted text art.
+- **Choose your vibe** — *Chill Guy*, or your **own logo** from any picture, pasted text art or a
+  blank canvas, touched up square by square. Logos you use are kept in **My Logos**.
 - **Clock options** — 12- or 24-hour (or follow the system), with or without the date, small or
   large.
 - **Smooth or easy on the battery** — the wallpaper runs at 120, 60, 30 or 15 fps, or **Auto**:
@@ -116,8 +116,8 @@ Spotlights · Spray · Swarm · Sweep · Synth Grid · Thunderstorm · Unstable 
 ## Usage
 
 1. **Pick effects** — tick the ones you like. Click an effect's name to preview just that one.
-2. **Choose your look** — the logo (*Chill Guy*, *Apple Evangelist* or **Custom**: pick a picture or
-   paste text art), a theme, and the clock options.
+2. **Choose your look** — the logo (*Chill Guy* or **Custom**: pick a picture, paste text art or start
+   blank, then click squares to fill or erase them), a theme, and the clock options.
 3. Pick a mode at the top and apply it:
    - **Smooth Mode** (the default): **Apply Smooth Mode** sets the screensaver, the lock screen and
      the desktop to one look. When you come back, the desktop carries on the screensaver's animation

@@ -5,7 +5,7 @@ import Foundation
 /// are also the keys of the screensaver's config.json.
 struct EffectConfig: Codable, Equatable {
     var effects: [String]
-    var logo: String                  // "apple-small" (Chill Guy), "apple" (Apple Evangelist) or "custom"
+    var logo: String                  // "apple-small" (Chill Guy) or "custom"
     var showClock: Bool
     var theme = "omarchy"
     var hourCycle = "auto"            // "auto" | "12" | "24"
@@ -21,9 +21,8 @@ struct EffectConfig: Codable, Equatable {
 
     static func logoTitle(_ logo: String) -> String {
         switch logo {
-        case "apple-small": return "Chill Guy"
         case "custom": return "Custom"
-        default: return "Apple Evangelist"
+        default: return "Chill Guy"
         }
     }
 
@@ -56,6 +55,7 @@ struct EffectConfig: Codable, Equatable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         effects = try c.decode([String].self, forKey: .effects)
         logo = try c.decode(String.self, forKey: .logo)
+        if logo == "apple" { logo = "apple-small" }       // Apple Evangelist is gone: Chill Guy instead
         showClock = try c.decode(Bool.self, forKey: .showClock)
         theme = try c.decodeIfPresent(String.self, forKey: .theme) ?? "omarchy"
         hourCycle = try c.decodeIfPresent(String.self, forKey: .hourCycle) ?? "auto"

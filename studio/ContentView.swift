@@ -5,6 +5,8 @@ struct ContentView: View {
     @EnvironmentObject private var wallpaper: Wallpaper
     @ObservedObject private var updates = Updates.shared
     @State private var editingLogo = false
+    @State private var showingLogoLibrary = false
+    @ObservedObject private var logoLibrary = LogoLibrary.shared
     @State private var editingTheme = false
     @State private var draft: EffectConfig
     @State private var focused: String?          // effect previewed on its own
@@ -25,6 +27,7 @@ struct ContentView: View {
         _focused = State(initialValue: snapshot?.focused)
         _showTutorial = State(initialValue: snapshot?.tutorial ?? false)
         _editingLogo = State(initialValue: snapshot != nil && ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT_EDITOR"] != nil)
+        _showingLogoLibrary = State(initialValue: snapshot != nil && ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT_LIBRARY"] != nil)
         _editingTheme = State(initialValue: snapshot != nil && ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT_THEME_EDITOR"] != nil)
         if snapshot != nil, let store = UserDefaults(suiteName: "com.applarchy.app.snapshot") {   // screenshots: don't touch real settings
             store.set(ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT_MODE"] ?? "custom", forKey: "mode")
@@ -59,6 +62,14 @@ struct ContentView: View {
                 CustomLogoEditor(draft: $draft, isPresented: $editingLogo)
                     .transition(.opacity)
                     .zIndex(1)
+            }
+            if showingLogoLibrary {
+                LogoLibraryView(isPresented: $showingLogoLibrary, current: draft.logo == "custom" ? draft.customLogo : nil) { picked in
+                    draft.customLogo = picked
+                    draft.logo = "custom"
+                }
+                .transition(.opacity)
+                .zIndex(1)
             }
             if showTutorial {
                 TutorialOverlay(isPresented: $showTutorial)
@@ -257,12 +268,14 @@ struct ContentView: View {
                         if new == "custom" && draft.customLogo == nil { editingLogo = true } else { draft.logo = new }
                     }), options: [
                     ("apple-small", EffectConfig.logoTitle("apple-small")),
-                    ("apple", EffectConfig.logoTitle("apple")),
                     ("custom", EffectConfig.logoTitle("custom")),
                 ])
-                .frame(width: 470)
+                .frame(width: 300)
                 if draft.logo == "custom" {
                     Button("Edit…") { editingLogo = true }.buttonStyle(PixelButtonStyle())
+                }
+                if !logoLibrary.logos.isEmpty {
+                    Button("My Logos…") { showingLogoLibrary = true }.buttonStyle(PixelButtonStyle())
                 }
             }
             optionRow("Theme") {
