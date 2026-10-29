@@ -2,6 +2,7 @@
 //! on a fixed canvas, then pull frames (ANSI rows, top first) one at a time.
 
 use std::ffi::{c_char, CStr};
+use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use clap::{CommandFactory, Parser};
 
@@ -16,6 +17,15 @@ pub struct Saver {
     engine: Engine,
     frame: Vec<u8>,
     name: Vec<u8>,
+    /// An earlier step panicked: the effect's state can't be trusted, so it's over.
+    failed: bool,
+}
+
+/// Runs `f`, turning a panic inside an effect into `fallback`, so the host (the screensaver,
+/// or the app's wallpaper and preview) skips the effect instead of going down with it.
+/// Needs `panic = "unwind"` (Cargo.toml).
+fn guarded<T>(fallback: T, f: impl FnOnce() -> T) -> T {
+    catch_unwind(AssertUnwindSafe(f)).unwrap_or(fallback)
 }
 
 fn effect_names() -> Vec<String> {
@@ -49,12 +59,16 @@ fn build(text: &str, width: i32, height: i32, command: &str, rng: Rng) -> Option
     let clock = Clock::virtual_with_frame_rate(config.frame_rate);
     let mut engine = Engine::new(text, config, rng, clock).ok()?;
     effect.build(&mut engine).ok()?;
-    Some(Saver { effect, engine, frame: Vec::new(), name: name.as_bytes().to_vec() })
+    Some(Saver { effect, engine, frame: Vec::new(), name: name.as_bytes().to_vec(), failed: false })
 }
 
 /// A random effect over `text` on a `width` x `height` canvas; null on failure.
 #[no_mangle]
 pub extern "C" fn ttfx_saver_new(text: *const c_char, width: i32, height: i32, seed: u64) -> *mut Saver {
+    guarded(std::ptr::null_mut(), || new_random(text, width, height, seed))
+}
+
+fn new_random(text: *const c_char, width: i32, height: i32, seed: u64) -> *mut Saver {
     if text.is_null() || width < 1 || height < 1 {
         return std::ptr::null_mut();
     }
@@ -75,6 +89,10 @@ pub extern "C" fn ttfx_saver_new(text: *const c_char, width: i32, height: i32, s
 /// A named effect, optionally with options ("thunderstorm --storm-time 600"); null if it can't be built.
 #[no_mangle]
 pub extern "C" fn ttfx_saver_new_named(text: *const c_char, width: i32, height: i32, seed: u64, name: *const c_char) -> *mut Saver {
+    guarded(std::ptr::null_mut(), || new_named(text, width, height, seed, name))
+}
+
+fn new_named(text: *const c_char, width: i32, height: i32, seed: u64, name: *const c_char) -> *mut Saver {
     if text.is_null() || name.is_null() {
         return std::ptr::null_mut();
     }
@@ -88,10 +106,20 @@ pub extern "C" fn ttfx_saver_new_named(text: *const c_char, width: i32, height: 
 }
 
 /// Advance one frame. Returns the frame's bytes (valid until the next call) or
-/// null when the effect has finished.
+/// null when the effect has finished (or failed: it panicked, now or before).
 #[no_mangle]
 pub extern "C" fn ttfx_saver_next(saver: *mut Saver, len: *mut usize) -> *const u8 {
     let Some(s) = (unsafe { saver.as_mut() }) else { return std::ptr::null() };
+    if s.failed {
+        return std::ptr::null();
+    }
+    guarded(None, || Some(next_frame(s, len))).unwrap_or_else(|| {
+        s.failed = true;
+        std::ptr::null()
+    })
+}
+
+fn next_frame(s: &mut Saver, len: *mut usize) -> *const u8 {
     if !step(s.effect.as_mut(), &mut s.engine) {
         return std::ptr::null();
     }
@@ -120,6 +148,29 @@ pub extern "C" fn ttfx_saver_effect_name(saver: *const Saver, len: *mut usize) -
 #[no_mangle]
 pub extern "C" fn ttfx_saver_free(saver: *mut Saver) {
     if !saver.is_null() {
-        drop(unsafe { Box::from_raw(saver) });
+        guarded((), || drop(unsafe { Box::from_raw(saver) }));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ffi::CString;
+
+    #[test]
+    fn a_panic_becomes_the_fallback() {
+        assert_eq!(guarded(7, || -> i32 { panic!("boom") }), 7);
+        assert_eq!(guarded(7, || 1), 1);
+    }
+
+    #[test]
+    fn a_failed_effect_is_over() {
+        let (text, name) = (CString::new("x").unwrap(), CString::new("wipe").unwrap());
+        let s = ttfx_saver_new_named(text.as_ptr(), 20, 5, 1, name.as_ptr());
+        let mut len = 0;
+        assert!(!ttfx_saver_next(s, &mut len).is_null());
+        unsafe { (*s).failed = true };
+        assert!(ttfx_saver_next(s, &mut len).is_null());
+        ttfx_saver_free(s);
     }
 }
