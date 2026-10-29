@@ -17,4 +17,6 @@ terminal_size = "0.4"
 lto = true
 strip = true
 codegen-units = 1
-panic = "abort"
+# Unwind, so the C API (src/saver_ffi.rs) can catch a panic in an effect and skip it,
+# instead of taking down the screensaver host or the app.
+panic = "unwind"
