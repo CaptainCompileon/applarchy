@@ -1,6 +1,7 @@
 import AppKit
 import IOKit.ps
 import ScreenSaver
+import os.log
 
 /// The live wallpaper: one borderless window per screen at desktop level
 /// (behind the icons), on every Space, ignoring the mouse. Rendering pauses
@@ -22,7 +23,14 @@ final class Wallpaper: NSObject, ObservableObject {
     private var handoffs: [String: StudioEffectView.Handoff] = [:]
     private var windows: [NSWindow] = []
     private var views: [StudioEffectView] = []
+    /// Displays asleep, session inactive, or (smooth mode) the screen locked.
     private var systemPaused = false
+    /// The screensaver is up: from didstart until it stops. Kept apart from systemPaused,
+    /// so a display waking mid-screensaver doesn't count as the screensaver stopping.
+    private var screensaverRunning = false
+    /// The screen is locked: the screensaver keeps running on the lock screen.
+    private var locked = false
+    private static let log = OSLog(subsystem: "com.applarchy.app", category: "wallpaper")
 
     var isRunning: Bool { config != nil }
 
@@ -35,8 +43,9 @@ final class Wallpaper: NSObject, ObservableObject {
         ws.addObserver(self, selector: #selector(systemPause), name: NSWorkspace.sessionDidResignActiveNotification, object: nil)
         ws.addObserver(self, selector: #selector(systemResume), name: NSWorkspace.sessionDidBecomeActiveNotification, object: nil)
         let dnc = DistributedNotificationCenter.default()
-        dnc.addObserver(self, selector: #selector(systemPause), name: .init("com.apple.screensaver.didstart"), object: nil)
-        dnc.addObserver(self, selector: #selector(systemResume), name: .init("com.apple.screensaver.didstop"), object: nil)
+        dnc.addObserver(self, selector: #selector(screensaverStarted), name: .init("com.apple.screensaver.didstart"), object: nil)
+        dnc.addObserver(self, selector: #selector(screensaverStopped), name: .init("com.apple.screensaver.didstop"), object: nil)
+        dnc.addObserver(self, selector: #selector(screensaverWillStop), name: .init("com.apple.screensaver.willstop"), object: nil)
         // Power: battery/AC changes and Low Power Mode.
         let context = Unmanaged.passUnretained(self).toOpaque()
         if let source = IOPSNotificationCreateRunLoopSource({ context in
@@ -50,7 +59,7 @@ final class Wallpaper: NSObject, ObservableObject {
         dnc.addObserver(self, selector: #selector(receivedHandoff(_:)), name: StudioEffectView.Handoff.notification, object: nil,
                         suspensionBehavior: .deliverImmediately)
         dnc.addObserver(self, selector: #selector(screenLocked), name: .init("com.apple.screenIsLocked"), object: nil)
-        dnc.addObserver(self, selector: #selector(systemResume), name: .init("com.apple.screenIsUnlocked"), object: nil)
+        dnc.addObserver(self, selector: #selector(screenUnlocked), name: .init("com.apple.screenIsUnlocked"), object: nil)
     }
 
     /// The screensaver's latest announcement for a screen size: from its pasteboard
@@ -68,10 +77,49 @@ final class Wallpaper: NSObject, ObservableObject {
     /// Smooth mode: locking the screen starts the screensaver straight away, so the
     /// lock screen plays the animation; unlocking hands it back to the desktop.
     @objc private func screenLocked() {
+        locked = true
         guard config?.smoothTransition == true else { return }
         systemPause()
         NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: "/System/Library/CoreServices/ScreenSaverEngine.app"),
                                            configuration: NSWorkspace.OpenConfiguration())
+    }
+
+    @objc private func screenUnlocked() {
+        locked = false
+        systemResume()
+        screensaverWillStop()              // the lock screen's screensaver ends with it
+    }
+
+    /// The screensaver is closing because the mouse moved. macOS doesn't reliably send
+    /// didstop, so take it as stopped here too: a moment later, so the screensaver's
+    /// "settling" announcement is in first. Not while locked: the screensaver then keeps
+    /// running on the lock screen, and unlocking ends it.
+    @objc private func screensaverWillStop() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [self] in
+            guard !locked else { return }
+            screensaverStopped()
+        }
+    }
+
+    @objc private func screensaverStarted() {
+        os_log("screensaver started", log: Self.log, type: .default)
+        screensaverRunning = true
+        updateAnimation()
+    }
+
+    /// The screensaver has gone. Smooth mode: carry on its effect on each screen, from
+    /// where it is now.
+    @objc private func screensaverStopped() {
+        guard screensaverRunning else { return }      // willstop, didstop and unlock can each report it
+        screensaverRunning = false
+        os_log("screensaver stopped%{public}@", log: Self.log, type: .default, config?.smoothTransition == true ? ": picking up the handoff" : "")
+        if config?.smoothTransition == true {
+            for (window, view) in zip(windows, views) {
+                view.handoff = latestHandoff(for: window.frame.size) ?? view.handoff
+                if view.isAnimating { view.stopAnimation() }
+            }
+        }
+        updateAnimation()
     }
 
     @objc private func receivedHandoff(_ note: Notification) {
@@ -147,6 +195,7 @@ final class Wallpaper: NSObject, ObservableObject {
             view.clockVisible = false
             view.holdsWhenDone = config.smoothTransition
             view.handoff = latestHandoff(for: screen.frame.size)
+            view.onHold = { [weak self] in DispatchQueue.main.async { self?.updateAnimation() } }   // stops it if power-paused
             view.holdSeconds = 4
             view.maxEngineFrames = 200_000
             view.followsScreensaverStop = false
@@ -163,16 +212,15 @@ final class Wallpaper: NSObject, ObservableObject {
     }
 
     @objc private func occlusionChanged() { updateAnimation() }
-    @objc private func systemPause() { systemPaused = true; updateAnimation() }
+    @objc private func systemPause() {
+        os_log("pause", log: Self.log, type: .default)
+        systemPaused = true
+        updateAnimation()
+    }
     @objc private func systemResume() {
+        guard systemPaused else { updateAnimation(); return }
+        os_log("resume", log: Self.log, type: .default)
         systemPaused = false
-        if config?.smoothTransition == true {
-            // Pick up the screensaver's latest effect on each screen, from where it is now.
-            for (window, view) in zip(windows, views) {
-                view.handoff = latestHandoff(for: window.frame.size) ?? view.handoff
-                if view.isAnimating { view.stopAnimation() }
-            }
-        }
         updateAnimation()
     }
 
@@ -181,7 +229,15 @@ final class Wallpaper: NSObject, ObservableObject {
         else if options.pauseInLowPowerMode && ProcessInfo.processInfo.isLowPowerModeEnabled { powerPause = "Low Power Mode" }
         else { powerPause = nil }
         for (window, view) in zip(windows, views) {
-            let run = !paused && !systemPaused && powerPause == nil && window.occlusionState.contains(.visible)
+            let visible = window.occlusionState.contains(.visible)
+            // Smooth mode: the screensaver's handoff plays to its end (a few seconds, then it
+            // holds the logo and stops) even while a power setting pauses the wallpaper.
+            let handoffPlaying = config?.smoothTransition == true && !view.isHolding
+            let run = !paused && !systemPaused && !screensaverRunning && (powerPause == nil || handoffPlaying) && visible
+            let why = [paused ? "paused" : nil, systemPaused ? "sleep/lock" : nil, screensaverRunning ? "screensaver" : nil,
+                       handoffPlaying ? nil : powerPause, visible ? nil : "covered"].compactMap { $0 }
+            os_log("%{public}dx%{public}d: %{public}@", log: Self.log, type: .default, Int(window.frame.width), Int(window.frame.height),
+                   run ? (powerPause != nil ? "run (finishing the handoff despite \(powerPause!))" : "run") : "stop (\(why.joined(separator: ", ")))")
             if run && !view.isAnimating { view.startAnimation() }
             if !run && view.isAnimating { view.stopAnimation() }
         }
