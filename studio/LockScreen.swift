@@ -140,6 +140,7 @@ enum LockScreen {
         view.customLogoText = config.customLogo
         view.logoName = config.logo
         view.themeID = config.theme
+        view.customTheme = config.customTheme
         view.showsClock = config.showClock
         view.clockStyle = config.clockStyle
         view.clockVisible = false            // macOS draws its own clock on the lock screen

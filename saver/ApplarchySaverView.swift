@@ -15,8 +15,10 @@ final class ApplarchySaverView: ScreenSaverView {
     var effectCommands: [String] = ApplarchySaverView.effects { didSet { playlist = [] } }
     var showsClock = true
     var clockStyle = ClockStyle()
-    /// A theme from Themes (colours of the effects, background and clock).
+    /// A theme from Themes (colours of the effects, background and clock), or "custom".
     var themeID = "omarchy"
+    /// The colours of the "custom" theme.
+    var customTheme: CustomTheme?
     /// Fall back to gentle effects when macOS's Reduce Motion is on.
     var respectsReduceMotion = true
     /// Draw the clock (layout still makes room for it when showsClock is on).
@@ -272,7 +274,7 @@ final class ApplarchySaverView: ScreenSaverView {
     /// Text art used when logoName is "custom".
     var customLogoText: String? { didSet { if logoName == "custom" { logo = currentLogo() } } }
     private lazy var logo: String = currentLogo()
-    private var theme: Theme { Themes.named(themeID) }
+    private var theme: Theme { Themes.named(themeID, custom: customTheme) }
 
     private struct Cell: Equatable { var scalar: UInt32 = 32; var fg: UInt32 = 0xC0C0C0; var bg: UInt32 = 0xFFFF_FFFF }
     private var previous: [Cell] = []
@@ -951,6 +953,9 @@ final class ApplarchySaverView: ScreenSaverView {
         if let name = config["logo"] as? String, name != logoName { logoName = name }
         if let clock = config["showClock"] as? Bool { showsClock = clock }
         if let theme = config["theme"] as? String { themeID = theme }
+        if let custom = config["customTheme"], let data = try? JSONSerialization.data(withJSONObject: custom) {
+            customTheme = try? JSONDecoder().decode(CustomTheme.self, from: data)
+        }
         if let cycle = config["hourCycle"] as? String { clockStyle.hourCycle = cycle }
         if let date = config["showDate"] as? Bool { clockStyle.showDate = date }
         if let large = config["clockLarge"] as? Bool { clockStyle.large = large }

@@ -57,5 +57,32 @@ enum Themes {
               stops: ["5c5c5c", "bebebe", "f0a500"], accents: ["8a8a8d", "bebebe", "f0a500", "ffffff"]),
     ]
 
-    static func named(_ id: String) -> Theme { all.first { $0.id == id } ?? all[0] }
+    /// The theme for `id`: one of `all`, or "custom" (your own, `custom`).
+    static func named(_ id: String, custom: CustomTheme? = nil) -> Theme {
+        if id == "custom", let custom { return custom.theme }
+        return all.first { $0.id == id } ?? all[0]
+    }
+}
+
+/// A theme of your own (EffectConfig.customTheme, "customTheme" in the screensaver's
+/// config.json): a theme's colours as hex strings ("1a1b26").
+struct CustomTheme: Codable, Equatable {
+    var background: String
+    var foreground: String
+    var stops: [String]             // final gradient, 3, darkest → brightest
+    var accents: [String]           // effect colours, 4
+
+    /// Starting from a built-in theme. Omarchy leaves the effects ttfx's own colours,
+    /// so it starts from colours close to those.
+    init(_ theme: Theme) {
+        background = String(format: "%06x", theme.background)
+        foreground = String(format: "%06x", theme.foreground)
+        stops = theme.stops.isEmpty ? ["8a008a", "00d1ff", "ffffff"] : theme.stops
+        accents = theme.accents.isEmpty ? ["ff4f8b", "ffb000", "35e08b", "00d1ff"] : theme.accents
+    }
+
+    var theme: Theme {
+        Theme(id: "custom", name: "Custom", background: UInt32(background, radix: 16) ?? 0,
+              foreground: UInt32(foreground, radix: 16) ?? 0xF0F0F0, stops: stops, accents: accents)
+    }
 }

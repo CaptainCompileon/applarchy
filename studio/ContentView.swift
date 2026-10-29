@@ -5,6 +5,7 @@ struct ContentView: View {
     @EnvironmentObject private var wallpaper: Wallpaper
     @ObservedObject private var updates = Updates.shared
     @State private var editingLogo = false
+    @State private var editingTheme = false
     @State private var draft: EffectConfig
     @State private var focused: String?          // effect previewed on its own
     @State private var hovered: String?
@@ -24,6 +25,7 @@ struct ContentView: View {
         _focused = State(initialValue: snapshot?.focused)
         _showTutorial = State(initialValue: snapshot?.tutorial ?? false)
         _editingLogo = State(initialValue: snapshot != nil && ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT_EDITOR"] != nil)
+        _editingTheme = State(initialValue: snapshot != nil && ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT_THEME_EDITOR"] != nil)
         if snapshot != nil, let store = UserDefaults(suiteName: "com.applarchy.app.snapshot") {   // screenshots: don't touch real settings
             store.set(ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT_MODE"] ?? "custom", forKey: "mode")
             _mode = AppStorage(wrappedValue: "custom", "mode", store: store)
@@ -47,6 +49,11 @@ struct ContentView: View {
                 effectList.frame(width: 320)
                 Rectangle().fill(Color.ink.opacity(0.12)).frame(width: 1)
                 detail.padding(20)
+            }
+            if editingTheme {
+                CustomThemeEditor(draft: $draft, isPresented: $editingTheme)
+                    .transition(.opacity)
+                    .zIndex(1)
             }
             if editingLogo {
                 CustomLogoEditor(draft: $draft, isPresented: $editingLogo)
@@ -257,8 +264,16 @@ struct ContentView: View {
                     ForEach(Themes.all) { theme in
                         ThemeSwatch(theme: theme, selected: draft.theme == theme.id) { draft.theme = theme.id }
                     }
+                    // Your own: its colours once made; until then a "+" that opens the editor.
+                    ThemeSwatch(theme: (draft.customTheme ?? CustomTheme(Themes.named(draft.theme))).theme,
+                                selected: draft.theme == "custom", placeholder: draft.customTheme == nil) {
+                        if draft.customTheme == nil { editingTheme = true } else { draft.theme = "custom" }
+                    }
                 }
-                Text(Themes.named(draft.theme).name).foregroundStyle(.secondary)
+                Text(Themes.named(draft.theme, custom: draft.customTheme).name).foregroundStyle(.secondary)
+                if draft.theme == "custom" {
+                    Button("Edit…") { editingTheme = true }.buttonStyle(PixelButtonStyle())
+                }
             }
             optionRow("Clock") {
                 Toggle("Show", isOn: $draft.showClock).toggleStyle(PixelCheckboxStyle())
@@ -407,7 +422,8 @@ struct PreviewView: NSViewRepresentable {
 
     func updateNSView(_ view: StudioEffectView, context: Context) {
         guard view.effectCommands != effects || view.logoName != config.logo || view.showsClock != config.showClock
-                || view.themeID != config.theme || view.clockStyle != config.clockStyle || view.customLogoText != config.customLogo else { return }
+                || view.themeID != config.theme || view.clockStyle != config.clockStyle || view.customLogoText != config.customLogo
+                || view.customTheme != config.customTheme else { return }
         view.stopAnimation()
         configure(view)
         view.startAnimation()
@@ -422,6 +438,7 @@ struct PreviewView: NSViewRepresentable {
         view.showsClock = config.showClock
         view.clockStyle = config.clockStyle
         view.themeID = config.theme
+        view.customTheme = config.customTheme
         view.holdSeconds = 1.5
         view.followsScreensaverStop = false
         // Offscreen image at Retina scale: far cheaper than redrawing the window. (Window
