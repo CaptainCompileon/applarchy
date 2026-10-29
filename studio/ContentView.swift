@@ -13,7 +13,8 @@ struct ContentView: View {
     @State private var message: String?
     @AppStorage("tutorialSeen") private var tutorialSeen = false
     /// "smooth": one look for screensaver, lock screen and desktop; "custom": each set separately.
-    @AppStorage("mode") private var mode = "custom"
+    /// Remembered once chosen; until then, see initialMode.
+    @AppStorage("mode") private var mode = "smooth"
     @State private var showTutorial = false
     private let snapshotMode: Bool
 
@@ -26,8 +27,18 @@ struct ContentView: View {
         if snapshot != nil, let store = UserDefaults(suiteName: "com.applarchy.app.snapshot") {   // screenshots: don't touch real settings
             store.set(ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT_MODE"] ?? "custom", forKey: "mode")
             _mode = AppStorage(wrappedValue: "custom", "mode", store: store)
+        } else if UserDefaults.standard.object(forKey: "mode") == nil {
+            UserDefaults.standard.set(Self.initialMode, forKey: "mode")
         }
         snapshotMode = snapshot != nil
+    }
+
+    /// The mode to open in before one has been chosen: what's already set up, if anything
+    /// (Smooth Mode on, or a 2.0-style separate wallpaper or screensaver), else Smooth Mode.
+    private static var initialMode: String {
+        if Store.wallpaper?.smoothTransition == true || Screensaver.currentConfig?.smoothTransition == true { return "smooth" }
+        if Store.wallpaper != nil || Screensaver.installed != nil { return "custom" }
+        return "smooth"
     }
 
     var body: some View {
