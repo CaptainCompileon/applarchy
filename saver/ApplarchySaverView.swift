@@ -213,11 +213,18 @@ final class ApplarchySaverView: ScreenSaverView {
     var bitmapScale: CGFloat?
     private var bitmap: CGContext?
 
-    // Omarchy runs ttfx at 120 fps; at 60 Hz that is two engine frames per tick. At rates
-    // that don't divide 120 (75, 90 Hz…) a tick is worth a fraction of a frame more or
-    // less; the remainder carries over, so effects keep the same pace at any rate.
-    private var engineFrameCarry = 0.0
+    // Omarchy runs ttfx at 120 fps; at 60 Hz that is two engine frames per tick. With an
+    // effectClock (the shared timeline's effect, or the handed-off one), the engine follows it:
+    // a late or slow tick skips drawing frames rather than slowing the effect, so every
+    // screen stays on the same frame, however much each has to draw. Without one (a
+    // preview), each tick is worth 120 × interval frames, the remainder carried over.
+    private var effectClock: Handoff?
     private func engineFramesThisTick() -> Int {
+        if let effectClock { return max(0, min(effectClock.frame(at: Date()) - engineFrames, 48)) }   // engine frames are cheap; drawing isn't
+        return carriedFramesThisTick()
+    }
+    private var engineFrameCarry = 0.0
+    private func carriedFramesThisTick() -> Int {
         engineFrameCarry += 120 * animationTimeInterval * (settling ? Self.settleSpeed : 1)
         let n = Int(engineFrameCarry + 1e-9)    // 120 × (1/120) may land a hair under 1
         engineFrameCarry -= Double(n)
@@ -331,6 +338,7 @@ final class ApplarchySaverView: ScreenSaverView {
             settling = true
             if holdRemaining > 0 { holdRemaining = 0; holding = true }     // between effects: already settled
             let at = sharesTimeline ? Timeline.shared.settle() : Date()  // the same moment on every instance
+            effectClock?.settleAt = at
             if var h = announced, !holding {
                 h.settleAt = at
                 announce(h)
@@ -376,6 +384,8 @@ final class ApplarchySaverView: ScreenSaverView {
         previous = []
         glyphCache.removeAll()
         overhang = 0
+        logoShift = 0
+        glide = nil
         makeBitmap()
         invalidateAll()
     }
@@ -412,6 +422,7 @@ final class ApplarchySaverView: ScreenSaverView {
         let height = Int32(rows + logoLayout().extra)   // rows past the screen are never drawn
         saver = logo.withCString { t in command.withCString { ttfx_saver_new_named(t, Int32(cols), height, slot.seed, $0) } }
         let h = Handoff(command: command, seed: slot.seed, startedAt: slot.startedAt, size: bounds.size, settleAt: slot.settleAt)
+        effectClock = h
         settling = slot.settleAt != nil
         let target = h.frame(at: Date())
         let playing = saver != nil && (target < 1 || fastForward(to: target))
@@ -441,6 +452,9 @@ final class ApplarchySaverView: ScreenSaverView {
     private func startEffect() {
         endEffect()
         holding = false
+        effectClock = nil
+        glide = nil
+        logoShift = 0
         let text = logo
         let height = Int32(rows + logoLayout().extra)   // rows past the screen are never drawn
         if holdsWhenDone { resumeHandoff(text: text, height: height); return }
@@ -479,13 +493,48 @@ final class ApplarchySaverView: ScreenSaverView {
         let h = handoff ?? Handoff(command: theme.command(for: "wipe"), seed: 1, startedAt: .distantPast, size: bounds.size)
         saver = text.withCString { t in h.command.withCString { ttfx_saver_new_named(t, Int32(cols), height, h.seed, $0) } }
         guard saver != nil else { return }
+        effectClock = h
         settling = h.settleAt != nil                                   // keep settling at the same speed
         if !fastForward(to: max(h.frame(at: Date()), 1)) {             // already finished: hold its last frame
             endEffect()
+            logoShift = centringShift                                  // where the glide would have ended
+            invalidateAll()
             holding = true
             onHold?()
         }
         os_log("handoff %{public}@ at frame %{public}d%{public}@", log: Self.log, type: .default, h.command, engineFrames, holding ? " (finished)" : "")
+    }
+
+    // MARK: glide to the centre
+    //
+    // Smooth mode's wallpaper plays the handoff in the screensaver's layout, the logo below
+    // the clock, so nothing jumps. The wallpaper has no clock, so once the effect is over
+    // (just the logo left) the drawing glides up until the logo sits in the middle.
+
+    /// Vertical offset of the whole drawing, in points.
+    private var logoShift: CGFloat = 0
+    private var glide: (from: CGFloat, to: CGFloat, start: Date)?
+    private static let glideSeconds = 0.9
+
+    /// The shift that centres the logo on the screen: none unless the layout made room
+    /// for a clock this view doesn't draw.
+    private var centringShift: CGFloat {
+        guard holdsWhenDone, showsClock, !clockVisible, rows > 0 else { return 0 }
+        let lines = logo.split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
+        let centre = floor((bounds.height - CGFloat(rows) * cellH) / 2) + (CGFloat(logoLayout().topRow) + CGFloat(lines) / 2) * cellH
+        return round(bounds.height / 2 - centre)
+    }
+
+    /// One glide step; false once it has arrived.
+    private func stepGlide() -> Bool {
+        guard let g = glide else { return false }
+        let t = min(1, Date().timeIntervalSince(g.start) / Self.glideSeconds)
+        let eased = t < 0.5 ? 4 * t * t * t : 1 - pow(-2 * t + 2, 3) / 2          // ease in-out (cubic)
+        logoShift = round(g.from + (g.to - g.from) * eased)                        // whole points: the fast fill path
+        invalidateAll()
+        if t >= 1 { glide = nil; return false }
+        return true
     }
 
     private func endEffect() {
@@ -499,6 +548,10 @@ final class ApplarchySaverView: ScreenSaverView {
             if now != clockText { clockText = now; invalidateAll() }
         }
         if holding { return }
+        if glide != nil {
+            if !stepGlide() { holding = true; onHold?() }
+            return
+        }
         if holdRemaining > 0 {
             holdRemaining -= 1
             if holdRemaining == 0 { startEffect() }
@@ -527,6 +580,10 @@ final class ApplarchySaverView: ScreenSaverView {
         }
         if finished || engineFrames >= maxEngineFrames {
             endEffect()
+            if holdsWhenDone, centringShift != logoShift {          // the logo's left: glide it to the centre
+                glide = (logoShift, centringShift, Date())
+                return
+            }
             if holdsWhenDone || settling { holding = true; if holdsWhenDone { onHold?() }; return }
             if sharesTimeline { holding = true; Timeline.shared.finish(self); return }   // the next starts on every screen together
             holdRemaining = holdTicks
@@ -573,7 +630,7 @@ final class ApplarchySaverView: ScreenSaverView {
     }
 
     private var gridOrigin: CGPoint {
-        CGPoint(x: floor((bounds.width - CGFloat(cols) * cellW) / 2), y: floor((bounds.height - CGFloat(rows) * cellH) / 2))
+        CGPoint(x: floor((bounds.width - CGFloat(cols) * cellW) / 2), y: floor((bounds.height - CGFloat(rows) * cellH) / 2) + logoShift)
     }
 
     /// Redraw only the cells that differ from the last frame (padded a cell each
