@@ -48,6 +48,10 @@ jobs:
       - name: Build
         run: scripts/package-dmg.sh
 
+      # Every effect in every theme through the engine, as the app builds them (tests/smoke).
+      - name: Smoke test
+        run: scripts/test.sh
+
       - name: Check
         run: |
           lipo -info dist/Applarchy.app/Contents/MacOS/Applarchy
