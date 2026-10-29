@@ -6,6 +6,8 @@ import UniformTypeIdentifiers
 struct ThemeSwatch: View {
     let theme: Theme
     let selected: Bool
+    /// The custom theme before it exists: a "+" instead of its colours.
+    var placeholder = false
     let action: () -> Void
     @State private var hovering = false
 
@@ -17,8 +19,13 @@ struct ThemeSwatch: View {
     var body: some View {
         Button(action: action) {
             ZStack {
-                Color(hex: theme.background)
-                HStack(spacing: 2) { ForEach(colors.indices, id: \.self) { Rectangle().fill(colors[$0]).frame(width: 5, height: 5) } }
+                if placeholder {
+                    Color.surface(0.1)
+                    Text("+").font(Pixel.title).foregroundStyle(Color.ink.opacity(0.7))
+                } else {
+                    Color(hex: theme.background)
+                    HStack(spacing: 2) { ForEach(colors.indices, id: \.self) { Rectangle().fill(colors[$0]).frame(width: 5, height: 5) } }
+                }
             }
             .frame(width: 26, height: 26)
             .overlay(Rectangle().strokeBorder(Color.ink.opacity(selected ? 0.95 : (hovering ? 0.6 : 0.22)), lineWidth: selected ? 2 : 1))
@@ -26,7 +33,7 @@ struct ThemeSwatch: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
-        .help(theme.name)
+        .help(placeholder ? "Make your own theme" : theme.name)
     }
 }
 
@@ -160,5 +167,111 @@ struct CustomLogoEditor: View {
 private struct HiddenEditorBackground: ViewModifier {
     func body(content: Content) -> some View {
         if #available(macOS 13, *) { content.scrollContentBackground(.hidden) } else { content }
+    }
+}
+
+/// Your own theme: a colour for the background and the clock, the gradient the logo settles
+/// into, and the effects' accent colours, starting from any built-in theme, with a live preview.
+struct CustomThemeEditor: View {
+    @Binding var draft: EffectConfig
+    @Binding var isPresented: Bool
+    @State private var theme: CustomTheme
+
+    init(draft: Binding<EffectConfig>, isPresented: Binding<Bool>) {
+        _draft = draft
+        _isPresented = isPresented
+        let d = draft.wrappedValue
+        _theme = State(initialValue: d.customTheme ?? CustomTheme(Themes.named(d.theme)))
+    }
+
+    private var previewConfig: EffectConfig {
+        var c = draft
+        c.theme = "custom"
+        c.customTheme = theme
+        return c
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.55).ignoresSafeArea().onTapGesture {}
+            card
+                .frame(width: 760)
+                .background(Color.surface(0.09))
+                .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.85), lineWidth: 2))
+                .background(Rectangle().fill(Color.ink.opacity(0.22)).offset(x: 6, y: 6))
+        }
+        .font(Pixel.body)
+    }
+
+    private var card: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("CUSTOM THEME").font(Pixel.title)
+            Text("Pick the colours: the background and clock, the gradient the logo settles into, and the colours the effects use (beams, rain, fireworks, lightning…).")
+                .foregroundStyle(.secondary).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .top, spacing: 18) {
+                VStack(alignment: .leading, spacing: 12) {
+                    row("BACKGROUND") { well(\.background) }
+                    row("CLOCK") { well(\.foreground) }
+                    row("GRADIENT") { ForEach(0..<3, id: \.self) { i in well(\.stops, i) } }
+                    row("ACCENTS") { ForEach(0..<4, id: \.self) { i in well(\.accents, i) } }
+                    row("START FROM") {
+                        ForEach(Themes.all) { t in
+                            ThemeSwatch(theme: t, selected: false) { theme = CustomTheme(t) }
+                        }
+                    }
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    // Effects that show the gradient and the accents (edits restart the preview).
+                    PreviewView(effects: ["beams", "rain", "fireworks"], config: previewConfig)
+                        .aspectRatio(16.0 / 10.0, contentMode: .fit)
+                        .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.3), lineWidth: 1.5))
+                    Text("PREVIEW").foregroundStyle(.secondary)
+                }
+                .frame(width: 300)
+            }
+            HStack(spacing: 10) {
+                Spacer()
+                Button("CANCEL") { isPresented = false }.buttonStyle(PixelLinkStyle()).keyboardShortcut(.cancelAction)
+                Button { use() } label: {
+                    Text("USE THIS THEME ▶").font(Pixel.body).foregroundStyle(Color.paper)
+                        .padding(.horizontal, 14).padding(.vertical, 7).background(Color.ink)
+                }
+                .buttonStyle(PixelPressStyle(shadow: 3, hovering: false))
+            }
+        }
+        .padding(24)
+    }
+
+    private func row<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(spacing: 8) {
+            Text(title).foregroundStyle(.secondary).frame(width: 110, alignment: .leading)
+            content()
+        }
+    }
+
+    /// A colour well for one of the theme's hex colours.
+    private func well(_ key: WritableKeyPath<CustomTheme, String>) -> some View {
+        ColorPicker("", selection: Binding(get: { Color(hex: UInt32(theme[keyPath: key], radix: 16) ?? 0) },
+                                           set: { theme[keyPath: key] = Self.hex($0) }), supportsOpacity: false)
+            .labelsHidden()
+    }
+
+    private func well(_ key: WritableKeyPath<CustomTheme, [String]>, _ i: Int) -> some View {
+        ColorPicker("", selection: Binding(get: { Color(hex: UInt32(theme[keyPath: key][i], radix: 16) ?? 0) },
+                                           set: { theme[keyPath: key][i] = Self.hex($0) }), supportsOpacity: false)
+            .labelsHidden()
+    }
+
+    /// "rrggbb" in sRGB, as ttfx takes colours.
+    private static func hex(_ color: Color) -> String {
+        guard let c = NSColor(color).usingColorSpace(.sRGB) else { return "000000" }
+        func byte(_ v: CGFloat) -> Int { Int((max(0, min(1, v)) * 255).rounded()) }
+        return String(format: "%02x%02x%02x", byte(c.redComponent), byte(c.greenComponent), byte(c.blueComponent))
+    }
+
+    private func use() {
+        draft.customTheme = theme
+        draft.theme = "custom"
+        isPresented = false
     }
 }

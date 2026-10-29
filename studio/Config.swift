@@ -12,6 +12,7 @@ struct EffectConfig: Codable, Equatable {
     var showDate = true
     var clockLarge = false
     var customLogo: String?           // text art, when logo is "custom"
+    var customTheme: CustomTheme?     // colours, when theme is "custom"
     /// Screensaver keeps playing on the lock screen; the wallpaper finishes its
     /// last animation after you log in and then holds the logo.
     var smoothTransition = false
@@ -31,7 +32,7 @@ struct EffectConfig: Codable, Equatable {
         if Set(effects) == Set(Catalog.allIDs) { names = "All \(effects.count) effects" }
         else if effects.count == 1 { names = Catalog.effects.first { $0.id == effects[0] }?.title ?? effects[0] }
         else { names = "\(effects.count) effects" }
-        let themed = theme == "omarchy" ? "" : ", " + Themes.named(theme).name
+        let themed = theme == "omarchy" ? "" : ", " + Themes.named(theme, custom: customTheme).name
         return names + ", " + Self.logoTitle(logo) + themed + (smoothTransition ? ", smooth" : "")
     }
 
@@ -61,6 +62,7 @@ struct EffectConfig: Codable, Equatable {
         showDate = try c.decodeIfPresent(Bool.self, forKey: .showDate) ?? true
         clockLarge = try c.decodeIfPresent(Bool.self, forKey: .clockLarge) ?? false
         customLogo = try c.decodeIfPresent(String.self, forKey: .customLogo)
+        customTheme = try c.decodeIfPresent(CustomTheme.self, forKey: .customTheme)
         smoothTransition = try c.decodeIfPresent(Bool.self, forKey: .smoothTransition) ?? false
     }
 }
