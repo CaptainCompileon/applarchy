@@ -246,7 +246,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         try? FileManager.default.removeItem(at: oldAgent)
         try? FileManager.default.removeItem(at: home.appendingPathComponent("Applications/Omarchy Wallpaper.app"))
         if Store.wallpaper == nil {
-            Wallpaper.shared.start(EffectConfig(effects: ["thunderstorm"], logo: "apple", showClock: false))
+            Wallpaper.shared.start(EffectConfig(effects: ["thunderstorm"], logo: "apple-small", showClock: false))
         }
     }
 }

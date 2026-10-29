@@ -953,7 +953,7 @@ final class ApplarchySaverView: ScreenSaverView {
     }
 
     /// Settings Applarchy writes into the screensaver bundle (Resources/config.json):
-    /// {"effects": [...], "logo": "apple" | "apple-small", "showClock": true}.
+    /// {"effects": [...], "logo": "apple-small" | "custom", "showClock": true}.
     /// Read straight from disk on every start, so changes apply the next time
     /// the screensaver runs.
     private func applyBundleConfig() {

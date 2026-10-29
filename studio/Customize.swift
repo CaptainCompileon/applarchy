@@ -43,19 +43,29 @@ extension Color {
     }
 }
 
-/// Make your own logo: from a picture (converted to half-block pixels) or pasted
-/// text art, editable before use. Shown as a pixel card over the window.
+/// Make your own logo: from a picture (converted to half-block pixels), pasted text
+/// art, or a blank canvas, then touched up square by square before use. Shown as a
+/// pixel card over the window. Only a confirmed logo goes into My logos.
 struct CustomLogoEditor: View {
     @Binding var draft: EffectConfig
     @Binding var isPresented: Bool
+    @ObservedObject private var library = LogoLibrary.shared
     @State private var text: String
+    /// The text as a grid, with room around it to draw into; kept in step with `text`.
+    @State private var art: PixelArt
     @State private var image: CGImage?
     @State private var width = "44"
+    @State private var tool = "draw"                 // "draw": the pixel grid; "text": the characters
+    @State private var history: [String] = []        // for UNDO
+    @State private var showingLibrary = false
+    private static let margin = 4
 
     init(draft: Binding<EffectConfig>, isPresented: Binding<Bool>) {
         _draft = draft
         _isPresented = isPresented
-        _text = State(initialValue: draft.wrappedValue.customLogo ?? LogoArt.text(named: "apple-small") ?? "")
+        let text = draft.wrappedValue.customLogo ?? LogoArt.text(named: "apple-small") ?? ""
+        _text = State(initialValue: text)
+        _art = State(initialValue: PixelArt(text: text).framed(margin: Self.margin))
     }
 
     private var previewConfig: EffectConfig {
@@ -72,23 +82,35 @@ struct CustomLogoEditor: View {
         ZStack {
             Color.black.opacity(0.55).ignoresSafeArea().onTapGesture {}
             card
-                .frame(width: 760)
+                .frame(width: 900)
                 .background(Color.surface(0.09))
                 .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.85), lineWidth: 2))
                 .background(Rectangle().fill(Color.ink.opacity(0.22)).offset(x: 6, y: 6))
+            if showingLibrary {
+                LogoLibraryView(isPresented: $showingLibrary, current: text) { picked in
+                    image = nil
+                    setText(picked)
+                }
+                .transition(.opacity)
+            }
         }
         .font(Pixel.body)
     }
 
     private var card: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("CUSTOM LOGO").font(Pixel.title)
-            Text("Choose a picture — a transparent PNG works best — or paste your own text art. It becomes ▀ ▄ █ blocks that every effect animates. You can edit the result below.")
+            HStack {
+                Text("CUSTOM LOGO").font(Pixel.title)
+                Spacer()
+                Button("MY LOGOS (\(library.logos.count))…") { showingLibrary = true }.buttonStyle(PixelButtonStyle())
+            }
+            Text("Choose a picture — a transparent PNG works best — paste text art, or start blank. Click a square to fill or erase it; drag to paint. It goes into My logos when you press USE THIS LOGO.")
                 .foregroundStyle(.secondary).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
                 Button("CHOOSE PICTURE…") { choosePicture() }.buttonStyle(PixelButtonStyle())
-                Button("PASTE TEXT ART") { if let s = NSPasteboard.general.string(forType: .string) { image = nil; text = s } }
+                Button("PASTE TEXT ART") { if let s = NSPasteboard.general.string(forType: .string) { image = nil; setText(s) } }
                     .buttonStyle(PixelButtonStyle())
+                Button("BLANK") { image = nil; setText(""); tool = "draw" }.buttonStyle(PixelButtonStyle())
                 Spacer()
                 if image != nil {
                     Text("SIZE").foregroundStyle(.secondary)
@@ -98,23 +120,45 @@ struct CustomLogoEditor: View {
                 }
             }
             HStack(alignment: .top, spacing: 12) {
-                TextEditor(text: $text)
-                    .font(.custom("Menlo", size: 7))
-                    .foregroundStyle(.white)
-                    .modifier(HiddenEditorBackground())
-                    .padding(6)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 10) {
+                        PixelSegmented(selection: $tool, options: [("draw", "DRAW"), ("text", "TEXT")]).frame(width: 170)
+                        Spacer()
+                        Button("UNDO") { undo() }.buttonStyle(PixelButtonStyle())
+                            .keyboardShortcut("z", modifiers: .command)
+                            .disabled(history.isEmpty)
+                    }
+                    Group {
+                        if tool == "draw" {
+                            PixelCanvas(art: $art, onStroke: { remember() }, onCommit: {
+                                text = art.text
+                                art = art.framed(margin: Self.margin)             // room again past the new edges
+                            })
+                        } else {
+                            TextEditor(text: $text)
+                                .font(.custom("Menlo", size: 7))
+                                .foregroundStyle(.white)
+                                .modifier(HiddenEditorBackground())
+                                .padding(6)
+                        }
+                    }
                     .background(Color.black)
                     .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.3), lineWidth: 1.5))
+                }
                 VStack(alignment: .leading, spacing: 6) {
                     // Exactly how the screensaver will draw it (edits restart the preview).
                     PreviewView(effects: ["highlight"], config: previewConfig)
                         .aspectRatio(16.0 / 10.0, contentMode: .fit)
                         .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.3), lineWidth: 1.5))
                     Text("PREVIEW").foregroundStyle(.secondary)
+                    original.padding(.top, 8)
                 }
                 .frame(width: 300)
             }
-            .frame(height: 230)
+            .frame(height: 400)
+            .onChange(of: text) { new in                         // typed in TEXT: follow it on the grid
+                if new != art.text { art = PixelArt(text: new).framed(margin: Self.margin) }
+            }
             HStack(spacing: 10) {
                 Text("\(lines.count) LINES × \(lines.map(\.count).max() ?? 0) COLUMNS").foregroundStyle(.secondary)
                 Spacer()
@@ -131,6 +175,53 @@ struct CustomLogoEditor: View {
         .padding(24)
     }
 
+    /// The picture chosen while the editor is open, to compare against. Only ever in
+    /// memory: closing the editor (or pasting, blanking, picking a saved logo) lets it go.
+    private var original: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            picture
+            Text("ORIGINAL PICTURE").foregroundStyle(.secondary)
+        }
+    }
+
+    private var picture: some View {
+        Group {
+            if let image {
+                Image(decorative: image, scale: 1)
+                    .resizable()
+                    .interpolation(.high)
+                    .aspectRatio(contentMode: .fit)
+                    .padding(8)
+            } else {
+                Text("A picture you choose shows here while you edit, to compare. It isn't kept.")
+                    .foregroundStyle(.secondary).lineSpacing(3).multilineTextAlignment(.center)
+                    .padding(16)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black)
+        .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.3), lineWidth: 1.5))
+    }
+
+    /// Replace the logo (a picture, paste, blank or saved one), undoably.
+    private func setText(_ new: String) {
+        guard new != text else { return }
+        remember()
+        text = new
+        art = PixelArt(text: new).framed(margin: Self.margin)
+    }
+
+    private func remember() {
+        history.append(text)
+        if history.count > 100 { history.removeFirst() }
+    }
+
+    private func undo() {
+        guard let last = history.popLast() else { return }
+        text = last
+        art = PixelArt(text: last).framed(margin: Self.margin)
+    }
+
     private func choosePicture() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.image]
@@ -139,6 +230,7 @@ struct CustomLogoEditor: View {
         var rect = CGRect(origin: .zero, size: ns.size)
         image = ns.cgImage(forProposedRect: &rect, context: nil, hints: nil)
         convert()
+        tool = "draw"                                        // straight to touching it up
     }
 
     /// Convert the picture at the chosen width, narrowing it if it would be taller
@@ -146,19 +238,26 @@ struct CustomLogoEditor: View {
     private func convert() {
         guard let image else { return }
         var cols = Int(width) ?? 44
-        guard var art = LogoArt.render(image: image, columns: cols) else { text = ""; return }
-        let rows = art.split(separator: "\n").count
+        guard var converted = LogoArt.render(image: image, columns: cols) else { setText(""); return }
+        let rows = converted.split(separator: "\n").count
         if rows > 36 {
             cols = max(8, cols * 36 / rows)
-            art = LogoArt.render(image: image, columns: cols) ?? art
+            converted = LogoArt.render(image: image, columns: cols) ?? converted
         }
-        text = art
+        setText(converted)
     }
 
+    /// Confirmed: this is the logo, and it's kept in My logos.
     private func use() {
-        let trimmed = lines.map { String($0).replacingOccurrences(of: "\\s+$", with: "", options: .regularExpression) }
-        draft.customLogo = trimmed.joined(separator: "\n") + "\n"
+        // Trailing spaces and blank lines above and below go; a gap inside the drawing stays.
+        var rows = text.split(separator: "\n", omittingEmptySubsequences: false)
+            .map { String($0).replacingOccurrences(of: "\\s+$", with: "", options: .regularExpression) }
+        while rows.first?.isEmpty == true { rows.removeFirst() }
+        while rows.last?.isEmpty == true { rows.removeLast() }
+        let logo = rows.joined(separator: "\n") + "\n"
+        draft.customLogo = logo
         draft.logo = "custom"
+        library.save(logo)
         isPresented = false
     }
 }
