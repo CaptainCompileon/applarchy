@@ -189,6 +189,7 @@ final class Wallpaper: NSObject, ObservableObject {
             view.customLogoText = config.customLogo
             view.logoName = config.logo
             view.themeID = config.theme
+            view.customTheme = config.customTheme
             // Smooth transition: the screensaver's layout (so the logo doesn't move), minus the
             // clock itself, playing the handed-off effect to its end and holding it.
             view.showsClock = config.smoothTransition && config.showClock
