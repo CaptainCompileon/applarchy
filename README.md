@@ -182,7 +182,8 @@ APPLARCHY_FLAVOR=release scripts/package-dmg.sh    # → dist/Applarchy-<version
 ```
 
 Without `APPLARCHY_FLAVOR=release`, `scripts/build.sh` and `scripts/package-dmg.sh` produce
-`dist/Applarchy DEV.app` and `dist/Applarchy-DEV-<version>.dmg`.
+`dist/Applarchy DEV.app` and `dist/Applarchy-DEV-<version>.dmg`. Testing, debugging hooks and how we
+work: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Builds are **universal** (Apple Silicon + Intel) when [rustup](https://rustup.rs) has the Intel target
 (`rustup target add x86_64-apple-darwin`), and Apple Silicon only otherwise. GitHub Actions builds
@@ -234,12 +235,16 @@ studio/   the app: SwiftUI front end, live preview, wallpaper windows, screensav
   ignores the mouse. It draws into an 8-bit offscreen bitmap at 1× and lets the compositor scale
   it up nearest-neighbour — crisp pixel art at a fraction of the cost of redrawing a Retina,
   wide-colour backing store every frame.
-- Effects run at Omarchy's 120 fps pace whatever the frame rate (a tick's leftover fraction of an
-  engine frame carries over, so 75 or 90 Hz keep the pace too). The screensaver runs at each
+- Effects run at Omarchy's 120 fps pace whatever the frame rate: each tick catches the engine up
+  to where it should be by now, so a slow tick drops a drawn frame instead of slowing the effect,
+  and all screens play the same effect in step. The screensaver runs at each
   display's refresh rate (`maximumFramesPerSecond`, capped at the engine's 120, or 60 when macOS
   doesn't report one); the wallpaper at 120, 60, 30 (the default) or 15 fps, or Auto, the same rule.
 - The layout (text size, logo, clock) scales to whichever of the screen's width or height is
   tighter, so ultrawide and portrait displays look like a laptop's, with more room around them.
+
+More in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), including how Smooth Mode hands the animation
+from the screensaver to the desktop.
 
 ## Privacy
 
