@@ -10,6 +10,14 @@ extension Color {
     static func surface(_ level: CGFloat) -> Color {
         Color(nsColor: .appearance(dark: NSColor(white: level, alpha: 1), light: NSColor(white: 1 - level / 2, alpha: 1)))
     }
+    /// The one accent: things that want a click (an available update).
+    static let accent = Color(nsColor: .accentPurple)
+}
+
+extension NSColor {
+    /// Omarchy's purple (#8A008A, as on the README's release badge), lighter in Dark.
+    static let accentPurple = NSColor.appearance(dark: NSColor(red: 0.74, green: 0.36, blue: 0.95, alpha: 1),
+                                                 light: NSColor(red: 0.54, green: 0, blue: 0.54, alpha: 1))
 }
 
 extension NSColor {
@@ -120,24 +128,26 @@ enum PixelIcon {
 
 extension PixelIcon {
     /// The icon as a template image (for the menu bar), one square per pixel. `badge`
-    /// adds a 2×2 dot in the top-right corner (an update is available).
+    /// (an update is available) adds a 3×3 purple dot in the top-right corner; a template
+    /// image can't have a colour, so then the icon is drawn in the menu bar's text colour,
+    /// which the drawing handler resolves for the current appearance each time it draws.
     func templateImage(points: CGFloat = 18, badge: Bool = false) -> NSImage {
-        var grid = rows
-        if badge {
-            for r in 0...1 { grid[r] = String(grid[r].prefix(10)) + "##" }
-        }
+        let grid = rows
         let image = NSImage(size: NSSize(width: points, height: points), flipped: true) { rect in
             let px = floor(rect.width / CGFloat(grid.count) * 2) / 2
             let o = (rect.width - px * CGFloat(grid.count)) / 2
-            NSColor.black.setFill()
+            func square(_ r: Int, _ c: Int) { NSRect(x: o + CGFloat(c) * px, y: o + CGFloat(r) * px, width: px, height: px).fill() }
+            (badge ? NSColor.labelColor : .black).setFill()
             for (r, row) in grid.enumerated() {
-                for (c, ch) in row.enumerated() where ch == "#" {
-                    NSRect(x: o + CGFloat(c) * px, y: o + CGFloat(r) * px, width: px, height: px).fill()
-                }
+                for (c, ch) in row.enumerated() where ch == "#" && !(badge && r < 4 && c > 7) { square(r, c) }   // room for the dot
+            }
+            if badge {
+                NSColor.accentPurple.setFill()
+                for r in 0...2 { for c in 9...11 { square(r, c) } }
             }
             return true
         }
-        image.isTemplate = true
+        image.isTemplate = !badge
         return image
     }
 }
@@ -169,11 +179,14 @@ struct PressableStyle: ButtonStyle {
 
 /// Small pixel-style button: monospaced label, 1.5 px border, hard 2 px shadow; inverts on hover.
 struct PixelButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View { PixelButtonBody(configuration: configuration) }
+    /// Filled with the accent colour instead of ink on surface: the one button to notice.
+    var prominent = false
+    func makeBody(configuration: Configuration) -> some View { PixelButtonBody(configuration: configuration, prominent: prominent) }
 }
 
 private struct PixelButtonBody: View {
     let configuration: ButtonStyleConfiguration
+    let prominent: Bool
     @Environment(\.isEnabled) private var isEnabled
     @State private var hovering = false
 
@@ -182,10 +195,10 @@ private struct PixelButtonBody: View {
         let pressed = configuration.isPressed
         configuration.label
             .font(Pixel.body)
-            .foregroundStyle(lit ? Color.paper : Color.ink)
+            .foregroundStyle(prominent ? Color.white : lit ? Color.paper : Color.ink)
             .padding(.horizontal, 10).padding(.vertical, 5)
-            .background(lit ? Color.ink : Color.surface(0.1))
-            .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.85), lineWidth: 1.5))
+            .background(prominent ? Color.accent.opacity(lit ? 0.8 : 1) : lit ? Color.ink : Color.surface(0.1))
+            .overlay(Rectangle().strokeBorder(prominent ? Color.accent : Color.ink.opacity(0.85), lineWidth: 1.5))
             .offset(x: pressed ? 2 : 0, y: pressed ? 2 : 0)
             .background(Rectangle().fill(Color.ink.opacity(0.28)).offset(x: 2, y: 2))
             .padding(.trailing, 2).padding(.bottom, 2)
