@@ -119,9 +119,13 @@ enum PixelIcon {
 }
 
 extension PixelIcon {
-    /// The icon as a template image (for the menu bar), one square per pixel.
-    func templateImage(points: CGFloat = 18) -> NSImage {
-        let grid = rows
+    /// The icon as a template image (for the menu bar), one square per pixel. `badge`
+    /// adds a 2×2 dot in the top-right corner (an update is available).
+    func templateImage(points: CGFloat = 18, badge: Bool = false) -> NSImage {
+        var grid = rows
+        if badge {
+            for r in 0...1 { grid[r] = String(grid[r].prefix(10)) + "##" }
+        }
         let image = NSImage(size: NSSize(width: points, height: points), flipped: true) { rect in
             let px = floor(rect.width / CGFloat(grid.count) * 2) / 2
             let o = (rect.width - px * CGFloat(grid.count)) / 2

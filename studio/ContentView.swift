@@ -160,6 +160,7 @@ struct ContentView: View {
 
     private var detail: some View {
         VStack(alignment: .leading, spacing: 12) {
+            if let release = updates.banner { updateBanner(release) }
             modePicker
             PreviewView(effects: previewEffects, config: draft)
                 .aspectRatio(16.0 / 10.0, contentMode: .fit)
@@ -220,10 +221,32 @@ struct ContentView: View {
             }
             if let update = updates.available {
                 statusRow(title: "Update", value: "Applarchy \(update.version) is available") {
-                    Button("Download…") { NSWorkspace.shared.open(update.url) }.buttonStyle(PixelButtonStyle())
+                    Button("Download…") { updates.download() }.buttonStyle(PixelButtonStyle())
                 }
             }
         }
+    }
+
+    /// A newer release, shown once: Download… or Later puts it away for that version
+    /// (the status area's Update row and the menu bar's dot stay until it's installed).
+    private func updateBanner(_ release: Updates.Release) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("APPLARCHY \(release.version) IS AVAILABLE").font(Pixel.title).foregroundStyle(Color.ink)
+                if !release.highlights.isEmpty {
+                    Text(release.highlights.joined(separator: " · ")).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
+                }
+            }
+            Spacer(minLength: 8)
+            Button("Download…") { withAnimation(.easeOut(duration: 0.15)) { updates.download() } }.buttonStyle(PixelButtonStyle())
+            Button("Later") { withAnimation(.easeOut(duration: 0.15)) { updates.dismiss() } }.buttonStyle(PixelButtonStyle())
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color.surface(0.12))
+        .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.9), lineWidth: 1.5))
+        .background(Rectangle().fill(Color.ink.opacity(0.25)).offset(x: 3, y: 3))
+        .transition(.opacity)
     }
 
     private var wallpaperStatus: String {
