@@ -16,5 +16,14 @@ fi
 mkdir -p "$HOME/Applications"
 rm -rf "${DEST:?}"
 cp -R "studio/build/$APP_NAME.app" "$DEST"
+# Other copies with this app ID (this build folder, other checkouts' old builds) let macOS
+# launch stale code by ID, e.g. a 2.0 build on a wide screen: forget all but the installed one.
+LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+"$LSREGISTER" -dump Bundle 2>/dev/null \
+  | awk -v id="$APP_ID" '/^path:/ { sub(/^path: +/, ""); sub(/ \(0x[0-9a-f]+\)$/, ""); p = $0 } $1 == "identifier:" && $2 == id { print p }' \
+  | sort -u | while read -r copy; do
+  [ "$copy" = "$DEST" ] || "$LSREGISTER" -u "$copy" 2>/dev/null || true
+done
+"$LSREGISTER" -f "$DEST"
 open "$DEST"
 echo "→ $DEST"

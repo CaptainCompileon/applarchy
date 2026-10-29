@@ -27,12 +27,22 @@ enum PixelClock {
         return (max(1, floor(date * s)), max(1, floor(time * s)), round(gap * s))
     }
 
-    private static let autoFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale.current
-        f.setLocalizedDateFormatFromTemplate("jmm")  // honours the system 12/24-hour setting
-        return f
-    }()
+    /// AUTO: whether the system shows 12-hour time, read again at most once a second, so
+    /// a change in System Settings shows up while the screensaver or wallpaper runs. The
+    /// time itself is always drawn with Latin digits and AM/PM, which the 5×7 font has.
+    private static var autoTwelveHour: (second: Int, value: Bool)?
+    private static func systemUsesTwelveHour(at date: Date) -> Bool {
+        let second = Int(date.timeIntervalSinceReferenceDate)
+        if let cached = autoTwelveHour, cached.second == second { return cached.value }
+        // The "24-hour time" switch, read from the preferences daemon (another process sets it).
+        CFPreferencesAppSynchronize(kCFPreferencesAnyApplication)
+        func forced(_ key: String) -> Bool { CFPreferencesCopyAppValue(key as CFString, kCFPreferencesAnyApplication) as? Bool == true }
+        let value = forced("AppleICUForce24HourTime") ? false
+            : forced("AppleICUForce12HourTime") ? true
+            : (DateFormatter.dateFormat(fromTemplate: "j", options: 0, locale: .autoupdatingCurrent) ?? "").contains("a")
+        autoTwelveHour = (second, value)
+        return value
+    }
 
     private static func fixedFormatter(_ format: String) -> DateFormatter {
         let f = DateFormatter()
@@ -51,14 +61,24 @@ enum PixelClock {
     }()
 
     static func timeString(_ style: ClockStyle = ClockStyle(), _ date: Date = Date()) -> String {
-        let f = style.hourCycle == "12" ? twelve : style.hourCycle == "24" ? twentyFour : autoFormatter
-        return f.string(from: date).uppercased()
+        let twelveHour = style.hourCycle == "12" || (style.hourCycle == "auto" && systemUsesTwelveHour(at: date))
+        return (twelveHour ? twelve : twentyFour).string(from: date).uppercased()
     }
 
     /// Height of the date + time block.
     static func height(in bounds: CGRect, style: ClockStyle = ClockStyle()) -> CGFloat {
         let m = metrics(style, bounds)
         return (style.showDate ? 7 * m.date + m.gap : 0) + 7 * m.time
+    }
+
+    /// The date line, formatted at most once a second (the clock may be drawn many times a frame).
+    private static var dateCache: (second: Int, text: String)?
+    private static func dateString(_ date: Date) -> String {
+        let second = Int(date.timeIntervalSinceReferenceDate)
+        if let c = dateCache, c.second == second { return c.text }
+        let text = dateFormatter.string(from: date).folding(options: .diacriticInsensitive, locale: nil).uppercased()
+        dateCache = (second, text)
+        return text
     }
 
     static func draw(in bounds: CGRect, top: CGFloat, style: ClockStyle = ClockStyle(), _ ctx: CGContext) {
@@ -68,7 +88,7 @@ enum PixelClock {
         let r = CGFloat(c >> 16 & 0xFF) / 255, g = CGFloat(c >> 8 & 0xFF) / 255, b = CGFloat(c & 0xFF) / 255
         var y = top
         if style.showDate {
-            let date = dateFormatter.string(from: now).folding(options: .diacriticInsensitive, locale: nil).uppercased()
+            let date = dateString(now)
             ctx.setFillColor(CGColor(red: r * 0.66, green: g * 0.66, blue: b * 0.66, alpha: 0.92))
             drawText(date, pixel: m.date, centreX: bounds.midX, top: y, ctx)
             y += 7 * m.date + m.gap

@@ -118,15 +118,47 @@ Spotlights · Spray · Swarm · Sweep · Synth Grid · Thunderstorm · Unstable 
 1. **Pick effects** — tick the ones you like. Click an effect's name to preview just that one.
 2. **Choose your look** — the logo (*Chill Guy*, *Apple Evangelist* or **Custom**: pick a picture or
    paste text art), a theme, and the clock options.
-3. Click **Use as Screensaver** or **Use as Wallpaper**.
+3. Pick a mode at the top and apply it:
+   - **Smooth Mode** (the default): **Apply Smooth Mode** sets the screensaver, the lock screen and
+     the desktop to one look. When you come back, the desktop carries on the screensaver's animation
+     and settles on the logo. **Turn Off** puts your previous wallpaper and lock screen back.
+   - **Custom**: **Use as Screensaver** and **Use as Wallpaper** separately, with every option.
    - The first time you set the screensaver, macOS asks to install it — click **Install**. Then pick
      **Applarchy** under *Other* in System Settings → Screen Saver. After that, Applarchy updates
      the installed screensaver directly; changes show the next time it starts.
    - The wallpaper starts right away and comes back when you log in. Pause it or turn it off from
      the storm-cloud icon in the menu bar. Its frame rate and battery options apply instantly.
 
-> **Tip:** the screensaver draws its own pixel clock. To avoid two clocks on top of each other, set
-> **System Settings → Lock Screen → Show large clock** to **On Lock Screen** (or **Never**).
+## Troubleshooting
+
+**My changes to the screensaver don't show.** They apply the next time the screensaver starts.
+Applarchy restarts macOS's screensaver host when it updates the screensaver; if System Settings is
+open, close and reopen it. If an old version still plays, quit the host (it starts again on its own):
+`killall legacyScreenSaver`.
+
+**Applarchy isn't in the Screen Saver list.** It's under *Other*. If you installed it for all users,
+it's in `/Library/Screen Savers`, otherwise in `~/Library/Screen Savers`.
+
+**Two clocks on the lock screen.** The screensaver draws its own pixel clock. Set **System Settings →
+Lock Screen → Show large clock** to **On Lock Screen** (or **Never**).
+
+**The wallpaper doesn't come back after logging in.** Applarchy has to run from **Applications** to
+start at login. A copy opened straight from the DMG or Downloads can't; the window says so.
+
+**The wallpaper stopped moving.** It pauses while windows cover the desktop, while the screensaver
+runs, and (if you ticked them) on battery or in Low Power Mode; the status line in the window shows
+when you or a power setting paused it. In Smooth Mode the desktop still finishes the screensaver's animation, then holds the logo.
+
+**Smooth Mode: the desktop only shows the logo.** If the screensaver had finished its effect (it was
+showing the logo), the desktop glides the logo to the middle and holds it; that's expected. If it
+never carries an animation on, click **Update Smooth Mode** after updating Applarchy, so the
+installed screensaver matches the app.
+
+**The screen goes dark soon after locking.** macOS turns the display off on the lock screen after a
+short while, whatever the screensaver does; Applarchy can't keep it on.
+
+**Only a few effects play.** With **Reduce Motion** on (System Settings → Accessibility → Display),
+only the calm effects play.
 
 ## Build from source
 
@@ -150,7 +182,8 @@ APPLARCHY_FLAVOR=release scripts/package-dmg.sh    # → dist/Applarchy-<version
 ```
 
 Without `APPLARCHY_FLAVOR=release`, `scripts/build.sh` and `scripts/package-dmg.sh` produce
-`dist/Applarchy DEV.app` and `dist/Applarchy-DEV-<version>.dmg`.
+`dist/Applarchy DEV.app` and `dist/Applarchy-DEV-<version>.dmg`. Testing, debugging hooks and how we
+work: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Builds are **universal** (Apple Silicon + Intel) when [rustup](https://rustup.rs) has the Intel target
 (`rustup target add x86_64-apple-darwin`), and Apple Silicon only otherwise. GitHub Actions builds
@@ -202,12 +235,16 @@ studio/   the app: SwiftUI front end, live preview, wallpaper windows, screensav
   ignores the mouse. It draws into an 8-bit offscreen bitmap at 1× and lets the compositor scale
   it up nearest-neighbour — crisp pixel art at a fraction of the cost of redrawing a Retina,
   wide-colour backing store every frame.
-- Effects run at Omarchy's 120 fps pace whatever the frame rate (a tick's leftover fraction of an
-  engine frame carries over, so 75 or 90 Hz keep the pace too). The screensaver runs at each
+- Effects run at Omarchy's 120 fps pace whatever the frame rate: each tick catches the engine up
+  to where it should be by now, so a slow tick drops a drawn frame instead of slowing the effect,
+  and all screens play the same effect in step. The screensaver runs at each
   display's refresh rate (`maximumFramesPerSecond`, capped at the engine's 120, or 60 when macOS
   doesn't report one); the wallpaper at 120, 60, 30 (the default) or 15 fps, or Auto, the same rule.
 - The layout (text size, logo, clock) scales to whichever of the screen's width or height is
   tighter, so ultrawide and portrait displays look like a laptop's, with more room around them.
+
+More in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), including how Smooth Mode hands the animation
+from the screensaver to the desktop.
 
 ## Privacy
 

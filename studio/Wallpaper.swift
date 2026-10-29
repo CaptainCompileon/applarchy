@@ -28,6 +28,9 @@ final class Wallpaper: NSObject, ObservableObject {
     /// The screensaver is up: from didstart until it stops. Kept apart from systemPaused,
     /// so a display waking mid-screensaver doesn't count as the screensaver stopping.
     private var screensaverRunning = false
+    /// When didstart came, and the timer that checks the screensaver hasn't gone unannounced.
+    private var screensaverStartedAt = Date.distantPast
+    private var screensaverWatch: Timer?
     /// The screen is locked: the screensaver keeps running on the lock screen.
     private var locked = false
     private static let log = OSLog(subsystem: "com.applarchy.app", category: "wallpaper")
@@ -104,7 +107,24 @@ final class Wallpaper: NSObject, ObservableObject {
     @objc private func screensaverStarted() {
         os_log("screensaver started", log: Self.log, type: .default)
         screensaverRunning = true
+        screensaverStartedAt = Date()
+        screensaverWatch?.invalidate()
+        screensaverWatch = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.checkScreensaverGone() }
         updateAnimation()
+    }
+
+    /// macOS can lose a screensaver session (a Preview that never shows, WallpaperAgent
+    /// restarting under it): no willstop, didstop or unlock ever comes, and the wallpaper
+    /// would wait for good. Any input ends a screensaver, so input since it started, with
+    /// the screen unlocked, means it's gone. Only once the input is half a second old, so
+    /// a real willstop (and the screensaver's "settling" announcement) goes first.
+    private func checkScreensaverGone() {
+        guard screensaverRunning else { screensaverWatch?.invalidate(); screensaverWatch = nil; return }
+        guard !locked else { return }
+        let idle = CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: CGEventType(rawValue: ~0)!)
+        guard Date().timeIntervalSince(screensaverStartedAt) - idle > 1, idle > 0.5 else { return }
+        os_log("screensaver gone without stopping (input since it started)", log: Self.log, type: .default)
+        screensaverStopped()
     }
 
     /// The screensaver has gone. Smooth mode: carry on its effect on each screen, from
@@ -112,6 +132,8 @@ final class Wallpaper: NSObject, ObservableObject {
     @objc private func screensaverStopped() {
         guard screensaverRunning else { return }      // willstop, didstop and unlock can each report it
         screensaverRunning = false
+        screensaverWatch?.invalidate()
+        screensaverWatch = nil
         os_log("screensaver stopped%{public}@", log: Self.log, type: .default, config?.smoothTransition == true ? ": picking up the handoff" : "")
         if config?.smoothTransition == true {
             for (window, view) in zip(windows, views) {
