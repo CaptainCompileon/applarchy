@@ -272,6 +272,15 @@ final class ApplarchySaverView: ScreenSaverView {
     /// Text art used when logoName is "custom".
     var customLogoText: String? { didSet { if logoName == "custom" { logo = currentLogo() } } }
     private lazy var logo: String = currentLogo()
+    /// The logo's non-blank lines, counted once per logo: layout needs it on every redraw.
+    private var logoLineCount: (logo: String, lines: Int)?
+    private var logoLines: Int {
+        if let c = logoLineCount, c.logo == logo { return c.lines }   // the same string: compared in O(1)
+        let lines = logo.split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
+        logoLineCount = (logo, lines)
+        return lines
+    }
     private var theme: Theme { Themes.named(themeID) }
 
     private struct Cell: Equatable { var scalar: UInt32 = 32; var fg: UInt32 = 0xC0C0C0; var bg: UInt32 = 0xFFFF_FFFF }
@@ -537,8 +546,7 @@ final class ApplarchySaverView: ScreenSaverView {
     /// for a clock this view doesn't draw.
     private var centringShift: CGFloat {
         guard holdsWhenDone, showsClock, !clockVisible, rows > 0 else { return 0 }
-        let lines = logo.split(separator: "\n", omittingEmptySubsequences: false)
-            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
+        let lines = logoLines
         let centre = floor((bounds.height - CGFloat(rows) * cellH) / 2) + (CGFloat(logoLayout().topRow) + CGFloat(lines) / 2) * cellH
         return round(bounds.height / 2 - centre)
     }
@@ -812,11 +820,16 @@ final class ApplarchySaverView: ScreenSaverView {
                 ctx.restoreGState()
             }
         }
-        // The clock sits midway between the top of the screen and the top of the logo.
+        // The clock sits midway between the top of the screen and the top of the logo. Only
+        // when this rect reaches its band: the effects' dirty rects mostly don't.
         if showsClock && clockVisible {
-            var style = clockStyle
-            style.color = theme.foreground
-            PixelClock.draw(in: bounds, top: round((logoTop - PixelClock.height(in: bounds, style: clockStyle)) / 2), style: style, ctx)
+            let height = PixelClock.height(in: bounds, style: clockStyle)
+            let top = round((logoTop - height) / 2)
+            if rect.intersects(CGRect(x: bounds.minX, y: top - 1, width: bounds.width, height: height + 2)) {
+                var style = clockStyle
+                style.color = theme.foreground
+                PixelClock.draw(in: bounds, top: top, style: style, ctx)
+            }
         }
     }
 
@@ -903,8 +916,7 @@ final class ApplarchySaverView: ScreenSaverView {
     /// closest to logoCentre, and report the row its top lands on.
     private func logoLayout() -> (extra: Int, topRow: Int) {
         let oy = floor((bounds.height - CGFloat(rows) * cellH) / 2)
-        let lines = logo.split(separator: "\n", omittingEmptySubsequences: false)
-            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
+        let lines = logoLines
         var best = (extra: 0, topRow: max(0, (rows - lines) / 2), err: CGFloat.infinity)
         for extra in 0...max(0, rows - lines) {
             let topRow = (rows + extra) / 2 - (lines + 1) / 2   // measured: floor(height/2) - ceil(lines/2)
