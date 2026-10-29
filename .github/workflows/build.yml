@@ -1,0 +1,62 @@
+name: Build
+
+# Builds the universal (Apple Silicon + Intel) Applarchy DMG and uploads it as an artifact:
+# on every pull request (a check, and a DMG to try), by hand from the Actions tab, and for
+# each release (release.yml calls it with the version to stamp into the app).
+on:
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        description: Version to stamp into the app (default the VERSION file)
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+# A new push to a pull request cancels its older build; releases always finish.
+concurrency:
+  group: build-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# The released "Applarchy"; local builds default to "Applarchy DEV" (scripts/flavor.sh).
+env:
+  APPLARCHY_FLAVOR: release
+  APPLARCHY_VERSION: ${{ inputs.version }}
+
+jobs:
+  dmg:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust targets
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            engine/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('engine/Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+
+      - name: Build
+        run: scripts/package-dmg.sh
+
+      - name: Check
+        run: |
+          lipo -info dist/Applarchy.app/Contents/MacOS/Applarchy
+          lipo -info dist/Applarchy.app/Contents/Resources/Applarchy.saver/Contents/MacOS/ApplarchySaverView
+          codesign --verify dist/Applarchy.app
+          echo "version $(defaults read "$PWD/dist/Applarchy.app/Contents/Info" CFBundleShortVersionString)"
+          shasum -a 256 dist/*.dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Applarchy-dmg
+          path: dist/*.dmg

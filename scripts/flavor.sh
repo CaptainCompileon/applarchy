@@ -3,7 +3,9 @@
 # "Applarchy DEV", which has its own app ID, settings, login item and screensaver,
 # so it installs and runs next to a released Applarchy.
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VERSION=$(cat "$ROOT/VERSION")
+# The release workflow stamps the version it worked out (scripts/next-version.sh);
+# otherwise the VERSION file's.
+VERSION=${APPLARCHY_VERSION:-$(cat "$ROOT/VERSION")}
 COMMIT=$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo local)
 if [ "${APPLARCHY_FLAVOR:-dev}" = release ]; then
   FLAVOR=release
