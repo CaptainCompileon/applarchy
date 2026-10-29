@@ -116,6 +116,7 @@ final class Wallpaper: NSObject, ObservableObject {
         if config?.smoothTransition == true {
             for (window, view) in zip(windows, views) {
                 view.handoff = latestHandoff(for: window.frame.size) ?? view.handoff
+                view.glidesIfStartedBy = Date().addingTimeInterval(3)
                 if view.isAnimating { view.stopAnimation() }
             }
         }

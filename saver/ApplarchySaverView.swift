@@ -193,6 +193,10 @@ final class ApplarchySaverView: ScreenSaverView {
     var isHolding: Bool { holding }
     /// Hold mode: called when the handoff reaches its last frame.
     var onHold: (() -> Void)?
+    /// Hold mode: the screensaver has just stopped. Starting before this time, the logo
+    /// glides from the screensaver's layout to the centre even if the effect is already
+    /// over (the screensaver was showing the logo); later, it's centred at once.
+    var glidesIfStartedBy: Date?
     /// Playing out the current effect at settleSpeed, then pausing.
     private var settling = false
     /// The effect the screensaver is playing, as announced.
@@ -502,14 +506,20 @@ final class ApplarchySaverView: ScreenSaverView {
         guard saver != nil else { return }
         effectClock = h
         settling = h.settleAt != nil                                   // keep settling at the same speed
+        let arriving = (glidesIfStartedBy ?? .distantPast) > Date()
+        glidesIfStartedBy = nil
         if !fastForward(to: max(h.frame(at: Date()), 1)) {             // already finished: hold its last frame
             endEffect()
-            logoShift = centringShift                                  // where the glide would have ended
-            invalidateAll()
-            holding = true
-            onHold?()
+            if arriving && centringShift != 0 {                        // straight from the screensaver: glide there
+                glide = (0, centringShift, Date())
+            } else {
+                logoShift = centringShift                              // where the glide would have ended
+                invalidateAll()
+                holding = true
+                onHold?()
+            }
         }
-        os_log("handoff %{public}@ at frame %{public}d%{public}@", log: Self.log, type: .default, h.command, engineFrames, holding ? " (finished)" : "")
+        os_log("handoff %{public}@ at frame %{public}d%{public}@", log: Self.log, type: .default, h.command, engineFrames, holding ? " (finished)" : glide != nil ? " (finished, gliding to the centre)" : "")
     }
 
     // MARK: glide to the centre
