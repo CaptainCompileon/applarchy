@@ -221,7 +221,7 @@ struct ContentView: View {
             }
             if let update = updates.available {
                 statusRow(title: "Update", value: "Applarchy \(update.version) is available") {
-                    Button("Download…") { updates.download() }.buttonStyle(PixelButtonStyle())
+                    Button("Download…") { updates.download() }.buttonStyle(PixelButtonStyle(prominent: true))
                 }
             }
         }
@@ -238,7 +238,7 @@ struct ContentView: View {
                 }
             }
             Spacer(minLength: 8)
-            Button("Download…") { withAnimation(.easeOut(duration: 0.15)) { updates.download() } }.buttonStyle(PixelButtonStyle())
+            Button("Download…") { withAnimation(.easeOut(duration: 0.15)) { updates.download() } }.buttonStyle(PixelButtonStyle(prominent: true))
             Button("Later") { withAnimation(.easeOut(duration: 0.15)) { updates.dismiss() } }.buttonStyle(PixelButtonStyle())
         }
         .padding(.horizontal, 14)
