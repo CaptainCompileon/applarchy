@@ -4,11 +4,11 @@ import AppKit
 /// rather than shipped as artwork: the glyph is rendered large, cropped to its
 /// ink, and resampled into half-block characters (▀ ▄ █), 2 pixels per text cell.
 enum LogoArt {
-    /// "apple" (Apple Evangelist, 52 columns) or "apple-small" (Chill Guy, 44 columns).
+    /// "apple-small" (Chill Guy, 44 columns). "apple", the retired Apple Evangelist,
+    /// draws the same, for settings saved before it went.
     static func text(named name: String) -> String? {
         switch name {
-        case "apple": return render(columns: 52)
-        case "apple-small", "screensaver": return render(columns: 44)
+        case "apple-small", "apple", "screensaver": return render(columns: 44)
         default: return nil
         }
     }
