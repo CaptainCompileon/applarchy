@@ -17,6 +17,7 @@ struct ContentView: View {
     /// Remembered once chosen; until then, see initialMode.
     @AppStorage("mode") private var mode = "smooth"
     @State private var showTutorial = false
+    @State private var previewHovered = false
     private let snapshotMode: Bool
 
     /// `snapshot`: a fixed selection, focus and tutorial state for README screenshots; nothing is saved.
@@ -178,9 +179,31 @@ struct ContentView: View {
                 .aspectRatio(16.0 / 10.0, contentMode: .fit)
                 .frame(maxWidth: .infinity)
                 .overlay(Rectangle().strokeBorder(Color.ink.opacity(0.25), lineWidth: 1.5))
+                // Click: the same, full screen on every display, until the mouse moves.
+                .overlay {
+                    Color.clear.contentShape(Rectangle())
+                        .onTapGesture {
+                            var shown = draft
+                            shown.effects = previewEffects      // a focused effect alone, as in the window
+                            FullScreenPreview.shared.show(shown)
+                        }
+                        .onHover { previewHovered = $0 }
+                        .help("Click to preview full screen")
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    Text("▶ FULL SCREEN").font(Pixel.body).foregroundStyle(.white)
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .background(Color.black.opacity(0.7))
+                        .overlay(Rectangle().strokeBorder(Color.white.opacity(0.6), lineWidth: 1.5))
+                        .padding(10)
+                        .opacity(previewHovered ? 1 : 0)
+                        .allowsHitTesting(false)
+                        .animation(.easeOut(duration: 0.15), value: previewHovered)
+                }
                 .layoutPriority(-1)
-            Text(focused.map { id in "Previewing \(Catalog.effects.first { $0.id == id }!.title) — click it again to preview your selection" }
+            Text((focused.map { id in "Previewing \(Catalog.effects.first { $0.id == id }!.title) — click it again to preview your selection" }
                  ?? (draft.effects.count == 1 ? "Previewing your selection" : "Previewing your selection in random order"))
+                 + " · click the preview for full screen")
                 .foregroundStyle(.secondary)
 
             options
@@ -414,9 +437,10 @@ struct PreviewView: NSViewRepresentable {
         self.config = config
     }
 
-    init(effects: [String], logo: String, showClock: Bool) {
+    init(effects: [String], logo: String, showClock: Bool, theme: String = "omarchy") {
         self.effects = effects
         config = EffectConfig(effects: effects, logo: logo, showClock: showClock)
+        config.theme = theme
     }
 
     func makeNSView(context: Context) -> StudioEffectView {
