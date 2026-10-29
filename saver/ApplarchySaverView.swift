@@ -25,15 +25,22 @@ final class ApplarchySaverView: ScreenSaverView {
     // MARK: smooth mode
     //
     // The screensaver announces every effect it starts (Handoff.notification). When
-    // you move the mouse it "settles": no new effects; the current one plays out at
-    // settleSpeed and pauses on the full logo — behind the lock screen, if macOS keeps
-    // it there — and it announces the moment settling began. The Applarchy wallpaper,
-    // in hold mode, computes the same timeline when the desktop comes back (the
-    // engine is deterministic for a seed): it carries on settling from the matching
-    // frame or, if that's over, shows the paused logo. So screensaver → desktop and
-    // screensaver → lock screen → desktop end the same way.
+    // you move the mouse it "settles": no new effects; the current one plays out, a bit
+    // faster and speeding up (settledFrames), and pauses on the full logo — behind the
+    // lock screen, if macOS keeps it there — and it announces the moment settling
+    // began. The Applarchy wallpaper, in hold mode, computes the same timeline when the
+    // desktop comes back (the engine is deterministic for a seed): it carries on
+    // settling from the matching frame or, if that's over, shows the paused logo. So
+    // screensaver → desktop and screensaver → lock screen → desktop end the same way.
 
-    static let settleSpeed = 6.0
+    /// Settling starts at settleSpeed × the normal pace and gains settleRamp × every
+    /// second: calm for the usual few seconds left, while a long effect (swarm, matrix)
+    /// still ends within about 9 s.
+    static let settleSpeed = 2.0
+    static let settleRamp = 1.0
+
+    /// Engine frames played `s` seconds into settling.
+    static func settledFrames(after s: Double) -> Double { 120 * (settleSpeed * s + settleRamp * s * s / 2) }
 
     struct Handoff: Equatable {
         /// This build's handoff name, from its Info.plist (scripts/flavor.sh writes the same
@@ -49,12 +56,12 @@ final class ApplarchySaverView: ScreenSaverView {
         /// When the screensaver began settling (the mouse moved), if it has.
         var settleAt: Date?
 
-        /// Engine frame (120 per second, settleSpeed times faster once settling) at `t`.
+        /// Engine frame (120 per second, then settledFrames once settling) at `t`.
         func frame(at t: Date) -> Int {
             let elapsed = min(t.timeIntervalSince(startedAt), 3600)
             guard let settleAt, t > settleAt else { return Int(max(0, elapsed) * 120) }
             let before = max(0, settleAt.timeIntervalSince(startedAt)) * 120
-            return Int(before + min(t.timeIntervalSince(settleAt), 3600) * 120 * ApplarchySaverView.settleSpeed)
+            return Int(before + ApplarchySaverView.settledFrames(after: min(t.timeIntervalSince(settleAt), 600)))
         }
 
         /// The named pasteboard a screen's screensaver leaves its latest announcement on
