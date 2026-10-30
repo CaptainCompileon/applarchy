@@ -59,6 +59,19 @@ enum LockScreen {
         resetApplarchyEntries()          // e.g. a backup taken after an earlier, partial takeover
     }
 
+    /// No Space or display shows this build's still any more: another Applarchy (DEV or
+    /// released) has applied its own Smooth Mode since, or a picture was chosen in System
+    /// Settings. nil when the store can't be read.
+    static var isTakenOver: Bool? {
+        guard let plist = loadStore() else { return nil }
+        return !desktopSlots(plist).contains { references($0.slot, stillMarker) }
+    }
+
+    /// How the store spells this build's stills: its URLs are percent-encoded ("Applarchy%20DEV").
+    private static var stillMarker: String {
+        "/\(AppIdentity.name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? AppIdentity.name)/lock-"
+    }
+
     // MARK: wallpaper store
 
     private static func loadStore() -> NSMutableDictionary? {
@@ -115,8 +128,7 @@ enum LockScreen {
     private static func resetApplarchyEntries() {
         guard let plist = loadStore() else { return }
         var changed = false
-        // Matched on the file-name prefix: the store keeps percent-encoded URLs ("Application%20Support").
-        for (_, slot) in desktopSlots(plist) where references(slot, "/\(AppIdentity.name)/lock-") {
+        for (_, slot) in desktopSlots(plist) where references(slot, stillMarker) {
             slot["Content"] = NSMutableDictionary(dictionary: [
                 "Choices": [["Provider": "default", "Files": [], "Configuration": Data()]],
                 "Shuffle": "$null", "EncodedOptionValues": "$null",
