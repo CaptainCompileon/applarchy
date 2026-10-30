@@ -181,9 +181,19 @@ final class Wallpaper: NSObject, ObservableObject {
         rebuild()
     }
 
-    /// Resume the saved wallpaper (at launch).
+    /// Resume the saved wallpaper (at launch). Not a Smooth Mode whose desktop picture has
+    /// been replaced since: it would cover the new desktop until quit. That Smooth Mode is
+    /// over, so it's turned off.
     func restore() {
-        if let saved = Store.wallpaper { config = saved; rebuild() }
+        guard let saved = Store.wallpaper else { return }
+        if saved.smoothTransition, LockScreen.isTakenOver == true {
+            os_log("smooth mode was replaced on the desktop: turning it off", log: Self.log, type: .default)
+            Store.wallpaper = nil
+            LoginItem.set(enabled: false)
+            return
+        }
+        config = saved
+        rebuild()
     }
 
     @objc private func rebuild() {
