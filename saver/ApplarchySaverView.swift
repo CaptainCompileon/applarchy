@@ -188,6 +188,8 @@ final class ApplarchySaverView: ScreenSaverView {
                 if let v = members.values.lazy.compactMap(\.view).first { startNext(using: v) }
             }
             next = item
+            os_log("all %{public}d screens finished %{public}@: the next effect in %{public}.1fs", log: ApplarchySaverView.log, type: .default,
+                   members.count, slot.effect, holdSeconds)
             DispatchQueue.main.asyncAfter(deadline: .now() + holdSeconds, execute: item)
         }
 
@@ -224,7 +226,7 @@ final class ApplarchySaverView: ScreenSaverView {
     /// The logo is centred between this fraction of the screen height and the bottom.
     /// nil: just below the clock (or the whole screen without one).
     var logoRegionTop: CGFloat?
-    var holdSeconds = 2.0                // pause on the finished logo
+    var holdSeconds = 3.0                // pause on the finished logo (config.json's pauseSeconds)
     var maxEngineFrames = 30_000         // safety cap for endless effects
     /// Restart the effect when the system screensaver stops (macOS also sends this on lock).
     var followsScreensaverStop = true
@@ -1030,6 +1032,7 @@ final class ApplarchySaverView: ScreenSaverView {
         if let date = config["showDate"] as? Bool { clockStyle.showDate = date }
         if let large = config["clockLarge"] as? Bool { clockStyle.large = large }
         if let smooth = config["smoothTransition"] as? Bool { smoothTransition = smooth }
+        if let pause = config["pauseSeconds"] as? Double, pause >= 0 { holdSeconds = pause }
     }
 
     override var hasConfigureSheet: Bool { false }

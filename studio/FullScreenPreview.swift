@@ -36,6 +36,7 @@ final class FullScreenPreview {
             view.customTheme = config.customTheme
             view.showsClock = config.showClock
             view.clockStyle = config.clockStyle
+            view.holdSeconds = config.pauseSeconds
             view.followsScreensaverStop = false        // a real screensaver starting or stopping isn't ours
             window.contentView = view
             window.orderFrontRegardless()

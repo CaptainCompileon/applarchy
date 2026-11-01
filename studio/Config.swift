@@ -16,6 +16,11 @@ struct EffectConfig: Codable, Equatable {
     /// Screensaver keeps playing on the lock screen; the wallpaper finishes its
     /// last animation after you log in and then holds the logo.
     var smoothTransition = false
+    /// How long the finished logo stays before the next effect, once every screen has finished.
+    var pauseSeconds = 3.0
+
+    /// The choices for pauseSeconds.
+    static let pauseChoices: [Double] = [1, 3, 5, 10, 30]
 
     static let `default` = EffectConfig(effects: Catalog.allIDs, logo: "apple-small", showClock: true)
 
@@ -64,6 +69,7 @@ struct EffectConfig: Codable, Equatable {
         customLogo = try c.decodeIfPresent(String.self, forKey: .customLogo)
         customTheme = try c.decodeIfPresent(CustomTheme.self, forKey: .customTheme)
         smoothTransition = try c.decodeIfPresent(Bool.self, forKey: .smoothTransition) ?? false
+        pauseSeconds = try c.decodeIfPresent(Double.self, forKey: .pauseSeconds) ?? 3
     }
 }
 
