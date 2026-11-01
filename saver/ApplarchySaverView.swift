@@ -27,13 +27,15 @@ final class ApplarchySaverView: ScreenSaverView {
     // MARK: smooth mode
     //
     // The screensaver announces every effect it starts (Handoff.notification). When
-    // you move the mouse it "settles": no new effects; the current one plays out, a bit
-    // faster and speeding up (settledFrames), and pauses on the full logo — behind the
-    // lock screen, if macOS keeps it there — and it announces the moment settling
-    // began. The Applarchy wallpaper, in hold mode, computes the same timeline when the
-    // desktop comes back (the engine is deterministic for a seed): it carries on
-    // settling from the matching frame or, if that's over, shows the paused logo. So
-    // screensaver → desktop and screensaver → lock screen → desktop end the same way.
+    // you move the mouse it "settles": no new effects; its clock fades, the current one
+    // plays out, a bit faster and speeding up (settledFrames), and the logo glides to the
+    // centre and stays — behind the lock screen, if macOS keeps it there, where it ends
+    // on the lock screen's picture — and it announces the moment settling began. The
+    // Applarchy wallpaper, in hold mode, computes the same timeline when the desktop
+    // comes back (the engine is deterministic for a seed): it carries on settling from
+    // the matching frame, or the glide from the matching point, or shows the centred
+    // logo. So screensaver → desktop, screensaver → lock screen and lock screen →
+    // desktop all look the same.
 
     /// Settling starts at settleSpeed × the normal pace and gains settleRamp × every
     /// second: calm for the usual few seconds left, while a long effect (swarm, matrix)
@@ -64,6 +66,22 @@ final class ApplarchySaverView: ScreenSaverView {
             guard let settleAt, t > settleAt else { return Int(max(0, elapsed) * 120) }
             let before = max(0, settleAt.timeIntervalSince(startedAt)) * 120
             return Int(before + ApplarchySaverView.settledFrames(after: min(t.timeIntervalSince(settleAt), 600)))
+        }
+
+        /// When the effect reaches engine frame `n` (frame(at:) backwards).
+        func date(ofFrame n: Int) -> Date {
+            var lo = startedAt, hi = startedAt.addingTimeInterval(4200)       // past frame(at:)'s caps
+            for _ in 0..<40 {
+                let mid = lo.addingTimeInterval(hi.timeIntervalSince(lo) / 2)
+                if frame(at: mid) >= n { hi = mid } else { lo = mid }
+            }
+            return hi
+        }
+
+        /// When the screensaver's logo starts gliding to the centre: once it has settled
+        /// and the effect (`frames` long) is over. nil before it settles.
+        func glideStart(frames: Int) -> Date? {
+            settleAt.map { max($0, date(ofFrame: frames + 1)) }
         }
 
         /// The named pasteboard a screen's screensaver leaves its latest announcement on
@@ -358,12 +376,17 @@ final class ApplarchySaverView: ScreenSaverView {
             // and tell the desktop when settling began.
             guard !settling else { return }
             settling = true
+            if showsClock && clockVisible { clockFadeStart = Date() }      // as on the desktop, which has none
             if holdRemaining > 0 { holdRemaining = 0; holding = true }     // between effects: already settled
             let at = sharesTimeline ? Timeline.shared.settle() : Date()  // the same moment on every instance
             effectClock?.settleAt = at
-            if var h = announced, !holding {
+            if var h = announced {                                         // holding too: the desktop joins the glide
                 h.settleAt = at
                 announce(h)
+            }
+            if holding && centringShift != logoShift {                    // just the logo: glide it now
+                holding = false
+                glide = (logoShift, centringShift, at)
             }
             return
         }
@@ -440,6 +463,9 @@ final class ApplarchySaverView: ScreenSaverView {
         holdRemaining = 0
         engineFrames = 0
         engineFrameCarry = 0
+        glide = nil
+        logoShift = 0
+        clockFadeStart = nil
         let command = theme.command(for: slot.effect)
         let height = Int32(rows + logoLayout().extra)   // rows past the screen are never drawn
         saver = logo.withCString { t in command.withCString { ttfx_saver_new_named(t, Int32(cols), height, slot.seed, $0) } }
@@ -477,6 +503,7 @@ final class ApplarchySaverView: ScreenSaverView {
         effectClock = nil
         glide = nil
         logoShift = 0
+        clockFadeStart = nil
         let text = logo
         let height = Int32(rows + logoLayout().extra)   // rows past the screen are never drawn
         if holdsWhenDone { resumeHandoff(text: text, height: height); return }
@@ -521,8 +548,12 @@ final class ApplarchySaverView: ScreenSaverView {
         glidesIfStartedBy = nil
         if !fastForward(to: max(h.frame(at: Date()), 1)) {             // already finished: hold its last frame
             endEffect()
-            if arriving && centringShift != 0 {                        // straight from the screensaver: glide there
-                glide = (0, centringShift, Date())
+            // In step with the screensaver's own glide (it may have finished it on the lock
+            // screen); with no settling announced, straight from the screensaver glides from here.
+            let from = h.glideStart(frames: engineFrames) ?? (arriving ? Date() : nil)
+            if let from, centringShift != 0, Date().timeIntervalSince(from) < Self.glideSeconds {
+                glide = (0, centringShift, from)
+                _ = stepGlide()                                        // partway along already: no low first frame
             } else {
                 logoShift = centringShift                              // where the glide would have ended
                 invalidateAll()
@@ -537,7 +568,8 @@ final class ApplarchySaverView: ScreenSaverView {
     //
     // Smooth mode's wallpaper plays the handoff in the screensaver's layout, the logo below
     // the clock, so nothing jumps. The wallpaper has no clock, so once the effect is over
-    // (just the logo left) the drawing glides up until the logo sits in the middle.
+    // (just the logo left) the drawing glides up until the logo sits in the middle. The
+    // settling screensaver drops its clock and does the same.
 
     /// Vertical offset of the whole drawing, in points.
     private var logoShift: CGFloat = 0
@@ -547,10 +579,31 @@ final class ApplarchySaverView: ScreenSaverView {
     /// The shift that centres the logo on the screen: none unless the layout made room
     /// for a clock this view doesn't draw.
     private var centringShift: CGFloat {
-        guard holdsWhenDone, showsClock, !clockVisible, rows > 0 else { return 0 }
+        guard showsClock, !keepsClock, rows > 0 else { return 0 }
         let lines = logoLines
         let centre = floor((bounds.height - CGFloat(rows) * cellH) / 2) + (CGFloat(logoLayout().topRow) + CGFloat(lines) / 2) * cellH
         return round(bounds.height / 2 - centre)
+    }
+
+    /// The clock stays: it's drawn (not the wallpaper's), and smooth mode's screensaver hasn't settled.
+    private var keepsClock: Bool { clockVisible && !(smoothTransition && settling) }
+
+    /// Settling: when the clock began fading out.
+    private var clockFadeStart: Date?
+    private static let clockFadeSeconds = 0.3
+
+    /// How strongly the clock is drawn: 1, 0, or fading out.
+    private var clockAlpha: CGFloat {
+        guard showsClock else { return 0 }
+        if keepsClock { return 1 }
+        guard clockVisible, let start = clockFadeStart else { return 0 }
+        return CGFloat(max(0, 1 - Date().timeIntervalSince(start) / Self.clockFadeSeconds))
+    }
+
+    /// The band the clock is drawn in.
+    private var clockBand: CGRect {
+        let height = PixelClock.height(in: bounds, style: clockStyle)
+        return CGRect(x: bounds.minX, y: round((logoTop - height) / 2) - 1, width: bounds.width, height: height + 2)
     }
 
     /// One glide step; false once it has arrived.
@@ -573,6 +626,10 @@ final class ApplarchySaverView: ScreenSaverView {
         if showsClock {
             let now = PixelClock.timeString(clockStyle)
             if now != clockText { clockText = now; invalidateAll() }
+        }
+        if let start = clockFadeStart {
+            invalidate(clockBand)
+            if Date().timeIntervalSince(start) >= Self.clockFadeSeconds { clockFadeStart = nil }   // that was its last step
         }
         if holding { return }
         if glide != nil {
@@ -607,7 +664,7 @@ final class ApplarchySaverView: ScreenSaverView {
         }
         if finished || engineFrames >= maxEngineFrames {
             endEffect()
-            if holdsWhenDone, centringShift != logoShift {          // the logo's left: glide it to the centre
+            if centringShift != logoShift {                          // the logo's left: glide it to the centre
                 glide = (logoShift, centringShift, Date())
                 return
             }
@@ -824,13 +881,14 @@ final class ApplarchySaverView: ScreenSaverView {
         }
         // The clock sits midway between the top of the screen and the top of the logo. Only
         // when this rect reaches its band: the effects' dirty rects mostly don't.
-        if showsClock && clockVisible {
-            let height = PixelClock.height(in: bounds, style: clockStyle)
-            let top = round((logoTop - height) / 2)
-            if rect.intersects(CGRect(x: bounds.minX, y: top - 1, width: bounds.width, height: height + 2)) {
+        let alpha = clockAlpha
+        if alpha > 0 {
+            let band = clockBand
+            if rect.intersects(band) {
                 var style = clockStyle
                 style.color = theme.foreground
-                PixelClock.draw(in: bounds, top: top, style: style, ctx)
+                ctx.setAlpha(alpha)
+                PixelClock.draw(in: bounds, top: band.minY + 1, style: style, ctx)
             }
         }
     }

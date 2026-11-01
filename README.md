@@ -120,8 +120,9 @@ Spotlights · Spray · Swarm · Sweep · Synth Grid · Thunderstorm · Unstable 
    blank, then click squares to fill or erase them), a theme, and the clock options.
 3. Pick a mode at the top and apply it:
    - **Smooth Mode** (the default): **Apply Smooth Mode** sets the screensaver, the lock screen and
-     the desktop to one look. When you come back, the desktop carries on the screensaver's animation
-     and settles on the logo. **Turn Off** puts your previous wallpaper and lock screen back.
+     the desktop to one look. When you come back, the animation plays out and the logo glides to the
+     centre, the same way on the lock screen and on the desktop, which carries on from where the
+     screensaver was. **Turn Off** puts your previous wallpaper and lock screen back.
    - **Custom**: **Use as Screensaver** and **Use as Wallpaper** separately, with every option.
    - The first time you set the screensaver, macOS asks to install it — click **Install**. Then pick
      **Applarchy** under *Other* in System Settings → Screen Saver. After that, Applarchy updates
