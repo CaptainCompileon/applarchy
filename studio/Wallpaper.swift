@@ -220,7 +220,7 @@ final class Wallpaper: NSObject, ObservableObject {
             view.holdsWhenDone = config.smoothTransition
             view.handoff = latestHandoff(for: screen.frame.size)
             view.onHold = { [weak self] in DispatchQueue.main.async { self?.updateAnimation() } }   // stops it if power-paused
-            view.holdSeconds = 4
+            view.holdSeconds = config.pauseSeconds
             view.maxEngineFrames = 200_000
             view.followsScreensaverStop = false
             view.bitmapScale = 1                    // 1x pixels, scaled up crisply: pixel art, cheap
