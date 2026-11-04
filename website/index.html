@@ -358,7 +358,7 @@
       <div class="prose reveal">
         <p>Free and open source under the MIT licence. No account, no subscription, no analytics.</p>
         <p>Applarchy makes one network request: once a day it asks GitHub's public API for the latest release, to tell you about updates. Nothing about you or your Mac is sent.</p>
-        <p>It isn't signed with an Apple Developer ID yet, so the first launch needs one extra click in System Settings. After that it opens like any other app.</p>
+        <p>It isn't signed with an Apple Developer ID yet, so the first launch needs one extra click in System Settings, unless you install from Terminal. After that it opens like any other app.</p>
       </div>
     </section>
 
@@ -377,8 +377,8 @@
           <li><span class="step-n">3</span><span>Pick your effects, a logo and a theme, then <b>Apply Smooth Mode</b>.</span></li>
         </ol>
         <div class="cmd">
-          <span class="muted">Or, in Terminal, instead of step 2:</span>
-          <div class="cmd-line"><code id="cmd">xattr -dr com.apple.quarantine /Applications/Applarchy.app</code><button class="btn btn-sm" type="button" data-copy="#cmd">COPY</button></div>
+          <span class="muted">Or install from Terminal, instead of steps 1 and 2: no extra click, and run it again to update.</span>
+          <div class="cmd-line"><code id="cmd">curl -fsSL https://raw.githubusercontent.com/CaptainCompileon/applarchy/main/scripts/install.sh | bash</code><button class="btn btn-sm" type="button" data-copy="#cmd">COPY</button></div>
         </div>
         <p class="dl-links">
           <a href="https://github.com/CaptainCompileon/applarchy/releases" rel="noopener">Release notes</a>
