@@ -26,7 +26,7 @@
 
   --f11: 11px; --f16: 16.5px; --f22: 22px; --f33: 33px; --f44: 44px;
   --measure: 720px;
-  --page: 960px;               /* every section, the nav and the footer share this width */
+  --page: clamp(960px, 66vw, 1360px);   /* every section, the nav and the footer share this width; it grows on wide screens */
   --gutter: 24px;
   --ease-px: steps(6, end);
   color-scheme: dark;
