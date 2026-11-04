@@ -6,7 +6,8 @@
 
 <p align="center">
   <b>Omarchy's terminal-art screensaver, reborn on macOS.</b><br>
-  37 pixel-art text effects over the Apple logo — as a screensaver or a live wallpaper.
+  37 pixel-art text effects over the Apple logo — as a screensaver or a live wallpaper.<br>
+  <a href="https://applarchy.vercel.app">applarchy.vercel.app</a>: try every effect in your browser.
 </p>
 
 <p align="center">
