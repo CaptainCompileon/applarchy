@@ -387,13 +387,13 @@ b { font-weight: 400; color: var(--ink); }
 .hero > .dl-card { margin-top: 32px; }
 .dl-card { border: 2px solid var(--line-2); background: var(--surface); padding: 40px 40px 36px; box-shadow: 8px 8px 0 var(--shadow); display: grid; gap: 28px; position: relative; overflow: hidden; }
 .dl-card::before { content: ''; position: absolute; inset: 0 0 auto; height: 4px; background: linear-gradient(90deg, var(--cyan), var(--accent), var(--omarchy)); }
-.dl-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; }
+.dl-head { display: grid; justify-items: center; gap: 22px; text-align: center; }
 .dl-title { font-size: var(--f33); line-height: 1.1; letter-spacing: 0.02em; }
-/* Which Macs: a badge, so nobody on Windows or Linux goes looking for a download. */
-.mac-only { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; border: 1.5px solid var(--line-2); background: var(--paper); padding: 8px 12px; font-size: var(--f11); }
-.mac-only b { font-weight: normal; letter-spacing: 0.06em; }
-.mac-only span { color: var(--muted); }
-.mac-only-icon { width: 14px; height: 13px; shape-rendering: crispEdges; fill: currentColor; flex: none; }
+/* Which Macs, centred under the title, so nobody on Windows or Linux goes looking for a download. */
+.mac-only { display: grid; justify-items: center; gap: 10px; }
+.mac-only-icon { width: 39px; height: 51px; shape-rendering: crispEdges; fill: currentColor; }   /* the 13 × 17 grid, 3 px a square */
+.mac-only-title { font-size: var(--f22); letter-spacing: 0.06em; }
+.mac-only-sub { font-size: var(--f11); color: var(--muted); line-height: 1.5; }
 .cmd { display: grid; gap: 8px; font-size: var(--f11); }
 .cmd-line { display: flex; gap: 10px; align-items: center; background: var(--paper); border: 1.5px solid var(--line); padding: 8px 8px 8px 12px; min-width: 0; }
 .cmd-prompt { color: var(--accent); flex: none; user-select: none; }
