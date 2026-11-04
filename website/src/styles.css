@@ -179,13 +179,20 @@ b { font-weight: 400; color: var(--ink); }
 .band-title { font-size: var(--f16); line-height: 1.35; letter-spacing: 0.04em; }
 .band-note { font-size: var(--f11); color: var(--muted); text-align: right; justify-self: end; max-width: calc(260px * var(--type)); line-height: 1.5; }
 /* Install: two options side by side, the Terminal one-liner first. */
+/* Each card spans three rows of the options grid (heading, command or button, note) and
+   shares them, so the command box and the DMG button line up at the same height. */
 .install-options { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.install-card { border: 1.5px solid var(--line); background: var(--surface); padding: 16px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.install-card { border: 1.5px solid var(--line-2); background: var(--surface); padding: 16px; display: grid; grid-row: span 3; grid-template-rows: subgrid; gap: 12px; min-width: 0; }
 .install-card-main { border-color: var(--accent); }
 .dl-card .install-card { background: var(--paper); }
 .install-head { display: flex; justify-content: space-between; gap: 12px; font-size: var(--f11); letter-spacing: 0.04em; }
 .install-tag { color: var(--accent); }
 .install-card .big-btn { min-width: 0; }
+/* The command, shaped like the DMG button: its border, shadow, padding and title size, in purple. */
+.install-card .cmd-line { border: 2px solid var(--accent); background: var(--surface); padding: 14px 12px 14px 16px; gap: 12px;
+  box-shadow: 4px 4px 0 color-mix(in srgb, var(--accent) 45%, transparent);
+  min-height: calc(34.1px * var(--type) + 35px); }   /* the button's height (its two lines, padding, border) when the cards stack */
+.install-card .cmd-line code, .install-card .cmd-prompt { font-size: var(--f11); }
 .install-note { font-size: var(--f11); color: var(--muted); line-height: 1.5; }
 
 .hero-screen { margin: 96px 0 0; }   /* well clear of the download card */

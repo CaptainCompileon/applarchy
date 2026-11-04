@@ -26,7 +26,9 @@ After changing the engine, rebuild the WebAssembly with `npm run wasm` (needs ru
 
 ## Deploy
 
-Vercel, with `website` as the project's root directory (framework: Vite, `vercel.json`).
+Vercel, connected to the GitHub repository with `website` as the project's root directory
+(framework: Vite, `vercel.json`). Every push to `main` deploys to production, and every pull
+request gets a preview deployment. To deploy by hand, from the repository's root (not `website/`):
 
 ```bash
 npx vercel --prod
