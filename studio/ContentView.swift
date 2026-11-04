@@ -12,6 +12,9 @@ struct ContentView: View {
     @State private var hovered: String?
     @State private var screensaver = Screensaver.currentConfig
     @State private var screensaverInstalled = Screensaver.installed != nil
+    @State private var screensaverSelected = Screensaver.isSelected
+    @State private var screensaverNeverStarts = Screensaver.neverStarts
+    @State private var choosingScreensaver = false     // being made the screensaver: no warning meanwhile
     @State private var message: String?
     @AppStorage("tutorialSeen") private var tutorialSeen = false
     /// "smooth": one look for screensaver, lock screen and desktop; "custom": each set separately.
@@ -252,9 +255,23 @@ struct ContentView: View {
                     Button("Screen Saver Settings…") { Screensaver.openSettings() }.buttonStyle(PixelButtonStyle())
                     Button("Turn Off") { turnOffSmooth() }.buttonStyle(PixelButtonStyle())
                 }
+                if !choosingScreensaver && screensaverSelected == false {
+                    warningRow("! Applarchy isn't your screensaver, so Smooth Mode can't play when your Mac locks.") {
+                        Button("Fix") { if screensaverInstalled { chooseScreensaver(.updated, config) } else { applySmooth() } }
+                            .buttonStyle(PixelButtonStyle(prominent: true))
+                    }
+                } else if screensaverNeverStarts {
+                    warningRow("! Your Mac never starts the screensaver: set \"Start Screen Saver when inactive\" to a time.") {
+                        Button("Screen Saver Settings…") { Screensaver.openSettings() }.buttonStyle(PixelButtonStyle())
+                    }
+                }
             } else {
                 statusRow(title: "Screensaver",
-                          value: screensaver?.summary ?? (screensaverInstalled ? "Installed, all effects" : "Not installed")) {
+                          value: (screensaver?.summary ?? (screensaverInstalled ? "Installed, all effects" : "Not installed"))
+                              + (screensaverInstalled && screensaverSelected == false && !choosingScreensaver ? " (not selected)" : "")) {
+                    if screensaverInstalled && screensaverSelected == false && !choosingScreensaver, let screensaver {
+                        Button("Select") { chooseScreensaver(.updated, screensaver) }.buttonStyle(PixelButtonStyle())
+                    }
                     Button("Screen Saver Settings…") { Screensaver.openSettings() }.buttonStyle(PixelButtonStyle())
                 }
                 statusRow(title: "Wallpaper", value: wallpaperStatus) {
@@ -378,6 +395,15 @@ struct ContentView: View {
         }
     }
 
+    /// Something Smooth Mode needs that isn't so, with what fixes it.
+    private func warningRow<Buttons: View>(_ text: String, @ViewBuilder buttons: () -> Buttons) -> some View {
+        HStack {
+            Text(text).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            buttons()
+        }
+    }
+
     // MARK: actions
 
     /// Smooth mode: the screensaver keeps playing on the lock screen and announces
@@ -389,12 +415,14 @@ struct ContentView: View {
         wallpaper.start(config)
         LockScreen.apply(config)
         do {
-            switch try Screensaver.apply(config) {
+            let outcome = try Screensaver.apply(config)
+            switch outcome {
             case .updated:
                 message = "Smooth mode is on: the screensaver, lock screen and desktop now share one look."
             case .installerOpened:
-                message = "Almost there: click Install in the dialog (and Replace, if asked), then choose Applarchy in Screen Saver settings."
+                message = "Almost there: click Install in the dialog (and Replace, if asked). Applarchy then becomes your screensaver by itself."
             }
+            chooseScreensaver(outcome, config)
         } catch {
             message = "Couldn't update the screensaver: \(error.localizedDescription)"
         }
@@ -420,12 +448,14 @@ struct ContentView: View {
         config.smoothTransition = false
         if smoothActive { leaveSmooth(); wallpaper.stop() }
         do {
-            switch try Screensaver.apply(config) {
+            let outcome = try Screensaver.apply(config)
+            switch outcome {
             case .updated:
                 message = "Screensaver updated. It takes effect the next time the screensaver starts."
             case .installerOpened:
-                message = "Click Install in the dialog that opened (and Replace, if asked). Then choose Applarchy in Screen Saver settings."
+                message = "Click Install in the dialog that opened (and Replace, if asked). Applarchy then becomes your screensaver by itself."
             }
+            chooseScreensaver(outcome, config)
         } catch {
             message = "Couldn't update the screensaver: \(error.localizedDescription)"
         }
@@ -441,9 +471,22 @@ struct ContentView: View {
         refresh()
     }
 
+    /// Make Applarchy the screensaver in System Settings: now if it's installed, else once
+    /// the installer has put this config in place.
+    private func chooseScreensaver(_ outcome: Screensaver.Outcome, _ config: EffectConfig) {
+        choosingScreensaver = true
+        let done = { choosingScreensaver = false; refresh() }
+        switch outcome {
+        case .updated: Screensaver.select(then: done)
+        case .installerOpened: Screensaver.selectOnceInstalled(config, then: done)
+        }
+    }
+
     private func refresh() {
         screensaver = Screensaver.currentConfig
         screensaverInstalled = Screensaver.installed != nil
+        screensaverSelected = Screensaver.isSelected
+        screensaverNeverStarts = Screensaver.neverStarts
     }
 }
 
