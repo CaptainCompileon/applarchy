@@ -328,6 +328,13 @@ struct ContentView: View {
                 .disabled(!draft.showClock)
                 .opacity(draft.showClock ? 1 : 0.35)
             }
+            optionRow("Pause") {
+                PixelSegmented(selection: Binding(get: { Self.seconds(draft.pauseSeconds) },
+                                                  set: { draft.pauseSeconds = Double($0.dropLast()) ?? 3 }),
+                               options: EffectConfig.pauseChoices.map { (Self.seconds($0), Self.seconds($0)) })
+                    .frame(width: 290)
+                Text("on the logo between effects").foregroundStyle(.secondary)
+            }
             optionRow("Wallpaper") {
                 PixelSegmented(selection: Binding(get: { "\(wallpaper.options.fps)" },
                                                   set: { wallpaper.options.fps = Int($0) ?? 30 }),
@@ -341,6 +348,9 @@ struct ContentView: View {
             }
         }
     }
+
+    /// "3S": a pause in seconds, as the picker shows it.
+    private static func seconds(_ s: Double) -> String { "\(Int(s))S" }
 
     /// After the frame-rate picker: "FPS", or for auto what it comes to on the displays.
     private var fpsNote: String {
@@ -463,7 +473,7 @@ struct PreviewView: NSViewRepresentable {
     func updateNSView(_ view: StudioEffectView, context: Context) {
         guard view.effectCommands != effects || view.logoName != config.logo || view.showsClock != config.showClock
                 || view.themeID != config.theme || view.clockStyle != config.clockStyle || view.customLogoText != config.customLogo
-                || view.customTheme != config.customTheme else { return }
+                || view.customTheme != config.customTheme || view.holdSeconds != config.pauseSeconds else { return }
         view.stopAnimation()
         configure(view)
         view.startAnimation()
@@ -479,7 +489,7 @@ struct PreviewView: NSViewRepresentable {
         view.clockStyle = config.clockStyle
         view.themeID = config.theme
         view.customTheme = config.customTheme
-        view.holdSeconds = 1.5
+        view.holdSeconds = config.pauseSeconds
         view.followsScreensaverStop = false
         // Offscreen image at Retina scale: far cheaper than redrawing the window. (Window
         // snapshots draw the view directly, since they can't capture layer contents.)

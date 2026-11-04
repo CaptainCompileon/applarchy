@@ -117,11 +117,14 @@ Spotlights · Spray · Swarm · Sweep · Synth Grid · Thunderstorm · Unstable 
 
 1. **Pick effects** — tick the ones you like. Click an effect's name to preview just that one.
 2. **Choose your look** — the logo (*Chill Guy* or **Custom**: pick a picture, paste text art or start
-   blank, then click squares to fill or erase them), a theme, and the clock options.
+   blank, then click squares to fill or erase them), a theme, the clock options, and the **Pause**:
+   how long the logo stays between effects (3 seconds by default, counted from when the last
+   screen finishes).
 3. Pick a mode at the top and apply it:
    - **Smooth Mode** (the default): **Apply Smooth Mode** sets the screensaver, the lock screen and
-     the desktop to one look. When you come back, the desktop carries on the screensaver's animation
-     and settles on the logo. **Turn Off** puts your previous wallpaper and lock screen back.
+     the desktop to one look. When you come back, the animation plays out and the logo glides to the
+     centre, the same way on the lock screen and on the desktop, which carries on from where the
+     screensaver was. **Turn Off** puts your previous wallpaper and lock screen back.
    - **Custom**: **Use as Screensaver** and **Use as Wallpaper** separately, with every option.
    - The first time you set the screensaver, macOS asks to install it — click **Install**. Then pick
      **Applarchy** under *Other* in System Settings → Screen Saver. After that, Applarchy updates
