@@ -180,7 +180,7 @@ b { font-weight: 400; color: var(--ink); }
 .band-note { font-size: var(--f11); color: var(--muted); text-align: right; justify-self: end; max-width: calc(260px * var(--type)); line-height: 1.5; }
 /* Install: two options side by side, the Terminal one-liner first. */
 .install-options { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.install-card { border: 1.5px solid var(--line); background: var(--surface); padding: 16px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.install-card { border: 1.5px solid var(--line-2); background: var(--surface); padding: 16px; display: grid; gap: 12px; align-content: start; min-width: 0; }
 .install-card-main { border-color: var(--accent); }
 .dl-card .install-card { background: var(--paper); }
 .install-head { display: flex; justify-content: space-between; gap: 12px; font-size: var(--f11); letter-spacing: 0.04em; }
