@@ -172,11 +172,8 @@ b { font-weight: 400; color: var(--ink); }
   border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 26px 0;
 }
 .band-title { font-size: var(--f16); line-height: 1.35; letter-spacing: 0.04em; }
-.platforms { display: flex; justify-content: flex-end; gap: 0; margin-top: 6px; color: var(--faint); }
-.platforms span + span::before { content: '·'; margin: 0 8px; }
 .band-note { font-size: var(--f11); color: var(--muted); text-align: right; justify-self: end; max-width: 260px; line-height: 1.5; }
 /* Install: two options side by side, the Terminal one-liner first. */
-.hero > .install-options { margin-top: 22px; }
 .install-options { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .install-card { border: 1.5px solid var(--line); background: var(--surface); padding: 16px; display: grid; gap: 12px; align-content: start; min-width: 0; }
 .install-card-main { border-color: var(--accent); }
@@ -186,7 +183,7 @@ b { font-weight: 400; color: var(--ink); }
 .install-card .big-btn { min-width: 0; }
 .install-note { font-size: var(--f11); color: var(--muted); line-height: 1.5; }
 
-.hero-screen { margin: 56px 0 0; }
+.hero-screen { margin: 96px 0 0; }   /* well clear of the download card */
 
 /* Window frames: the app's square, hard-shadowed panels. */
 .frame { border: 2px solid var(--line-2); background: var(--paper); box-shadow: 6px 6px 0 var(--shadow); }
@@ -387,10 +384,16 @@ b { font-weight: 400; color: var(--ink); }
 
 /* ---------- download ---------- */
 
-.download { padding-top: 120px; padding-bottom: 40px; }
+.hero > .dl-card { margin-top: 32px; }
 .dl-card { border: 2px solid var(--line-2); background: var(--surface); padding: 40px 40px 36px; box-shadow: 8px 8px 0 var(--shadow); display: grid; gap: 28px; position: relative; overflow: hidden; }
 .dl-card::before { content: ''; position: absolute; inset: 0 0 auto; height: 4px; background: linear-gradient(90deg, var(--cyan), var(--accent), var(--omarchy)); }
-.dl-title { font-size: var(--f44); line-height: 1.1; letter-spacing: 0.02em; }
+.dl-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; }
+.dl-title { font-size: var(--f33); line-height: 1.1; letter-spacing: 0.02em; }
+/* Which Macs: a badge, so nobody on Windows or Linux goes looking for a download. */
+.mac-only { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; border: 1.5px solid var(--line-2); background: var(--paper); padding: 8px 12px; font-size: var(--f11); }
+.mac-only b { font-weight: normal; letter-spacing: 0.06em; }
+.mac-only span { color: var(--muted); }
+.mac-only-icon { width: 14px; height: 13px; shape-rendering: crispEdges; fill: currentColor; flex: none; }
 .cmd { display: grid; gap: 8px; font-size: var(--f11); }
 .cmd-line { display: flex; gap: 10px; align-items: center; background: var(--paper); border: 1.5px solid var(--line); padding: 8px 8px 8px 12px; min-width: 0; }
 .cmd-prompt { color: var(--accent); flex: none; user-select: none; }
@@ -424,7 +427,6 @@ b { font-weight: 400; color: var(--ink); }
   .hero-icon { width: 56px; height: 56px; }
   .wordmark-row { margin: 26px auto 22px; }
   .band { grid-template-columns: 1fr; gap: 18px; text-align: left; }
-  .platforms { justify-content: flex-start; }
   .band-note { text-align: left; justify-self: start; max-width: none; }
   .install-options { grid-template-columns: 1fr; }
   .hero-screen { margin-top: 36px; }
@@ -451,7 +453,7 @@ b { font-weight: 400; color: var(--ink); }
     background: repeating-linear-gradient(180deg, var(--accent) 0 4px, transparent 4px 8px); }
   .facts { grid-template-columns: 1fr; }
   .dl-card { padding: 26px 18px 24px; box-shadow: 4px 4px 0 var(--shadow); }
-  .dl-title { font-size: var(--f33); }
+  .dl-title { font-size: var(--f22); }
   .foot-row { grid-template-columns: 1fr; gap: 16px; }
   .nav-gh-label { display: none; }
   .nav-in { gap: 14px; }

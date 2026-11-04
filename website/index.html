@@ -29,6 +29,7 @@
       </linearGradient>
       <symbol id="i-storm" viewBox="0 0 12 12"><path d="M4 1h4v1h-4zM2 2h8v1h-8zM1 3h10v1h-10zM0 4h12v1h-12zM0 5h12v1h-12zM1 6h10v1h-10zM6 7h1v1h-1zM5 8h2v1h-2zM4 9h4v1h-4zM5 10h2v1h-2zM5 11h1v1h-1z"/></symbol>
       <symbol id="i-moon" viewBox="0 0 12 12"><path d="M10 0h1v1h-1zM9 1h3v1h-3zM2 2h2v1h-2zM10 2h1v1h-1zM1 3h3v1h-3zM1 4h3v1h-3zM0 5h4v1h-4zM0 6h4v1h-4zM0 7h5v1h-5zM1 8h5v1h-5zM1 9h8v1h-8zM2 10h6v1h-6z"/></symbol>
+      <symbol id="i-apple" viewBox="0 0 12 11"><path d="M7 0h2v1h-2zM6 1h2v1h-2zM1 2h4v1h-4zM7 2h4v1h-4zM0 3h12v1h-12zM0 4h11v1h-11zM0 5h10v1h-10zM0 6h10v1h-10zM0 7h11v1h-11zM0 8h12v1h-12zM1 9h10v1h-10zM2 10h3v1h-3zM7 10h3v1h-3z"/></symbol>
       <symbol id="i-logo" viewBox="0 0 40 42"><path d="M15 0h10v2h-10zM11 2h16v2h-16zM11 4h18v2h-18zM9 6h20v1h-20zM8 7h21v1h-21zM8 8h25v1h-25zM8 9h26v1h-26zM5 10h33v1h-33zM4 11h34v2h-34zM2 13h36v2h-36zM0 15h40v10h-40zM0 25h38v2h-38zM17 27h4v2h-4zM15 29h10v2h-10zM19 31h4v3h-4zM17 34h4v2h-4zM15 36h4v1h-4zM14 37h5v1h-5zM13 38h4v2h-4zM13 40h2v2h-2z"/></symbol>
     </defs>
   </svg>
@@ -71,23 +72,35 @@
       </div>
       <div class="band reveal">
         <p class="band-title">A SCREENSAVER<br>&amp; LIVE WALLPAPER<br>FOR THE MAC</p>
-        <p class="band-note">Free and open source, MIT. No account, no tracking.<span class="platforms"><span>Apple Silicon</span><span>Intel</span><span>Universal</span></span></p>
+        <p class="band-note">Free and open source, MIT. No account, no tracking.</p>
       </div>
-      <div class="install-options reveal">
-        <div class="install-card install-card-main">
-          <p class="install-head"><span>TERMINAL</span><span class="install-tag">RECOMMENDED</span></p>
-          <div class="cmd-line"><span class="cmd-prompt" aria-hidden="true">$</span><code id="cmd-hero">curl -fsSL https://raw.githubusercontent.com/CaptainCompileon/applarchy/main/scripts/install.sh | bash</code><button class="btn btn-sm" type="button" data-copy="#cmd-hero">COPY</button></div>
-          <p class="install-note">Installs into Applications, no extra click. Run it again to update.</p>
+      <div class="dl-card reveal" id="download">
+        <div class="dl-head">
+          <h2 class="dl-title" data-scramble>GET APPLARCHY</h2>
+          <p class="mac-only"><svg class="mac-only-icon" aria-hidden="true"><use href="#i-apple"/></svg><b>MAC ONLY</b><span>macOS 13 Ventura or later · Apple Silicon and Intel · not for Windows or Linux</span></p>
         </div>
-        <div class="install-card">
-          <p class="install-head"><span>DMG</span></p>
-          <a class="big-btn" href="https://github.com/CaptainCompileon/applarchy/releases/latest" data-download rel="noopener">
-            <svg class="big-btn-icon" aria-hidden="true"><use href="#i-storm"/></svg>
-            <span class="big-btn-text"><span class="big-btn-title">DOWNLOAD</span><span class="big-btn-sub" data-version-line>Free · macOS 13 or later</span></span>
-            <span class="big-btn-arrow" aria-hidden="true">▶</span>
-          </a>
-          <p class="install-note">The first launch needs <b>Open Anyway</b> in System Settings.</p>
+        <div class="install-options">
+          <div class="install-card install-card-main">
+            <p class="install-head"><span>TERMINAL</span><span class="install-tag">RECOMMENDED</span></p>
+            <div class="cmd-line"><span class="cmd-prompt" aria-hidden="true">$</span><code id="cmd">curl -fsSL https://raw.githubusercontent.com/CaptainCompileon/applarchy/main/scripts/install.sh | bash</code><button class="btn btn-sm" type="button" data-copy="#cmd">COPY</button></div>
+            <p class="install-note">Paste it into <b>Terminal</b>. It installs the latest release into <b>Applications</b>, and Applarchy opens with no extra click. Run it again to update.</p>
+          </div>
+          <div class="install-card">
+            <p class="install-head"><span>DMG</span></p>
+            <a class="big-btn" href="https://github.com/CaptainCompileon/applarchy/releases/latest" data-download rel="noopener">
+              <svg class="big-btn-icon" aria-hidden="true"><use href="#i-storm"/></svg>
+              <span class="big-btn-text"><span class="big-btn-title">DOWNLOAD</span><span class="big-btn-sub" data-version-line>Free · macOS 13 or later</span></span>
+              <span class="big-btn-arrow" aria-hidden="true">▶</span>
+            </a>
+            <p class="install-note">Open it and drag <b>Applarchy</b> into <b>Applications</b>. The first time, macOS refuses: open <b>System Settings → Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>.</p>
+          </div>
         </div>
+        <p class="dl-then">Then open Applarchy, pick your effects, a logo and a theme, and <b>Apply Smooth Mode</b>.</p>
+        <p class="dl-links">
+          <a href="https://github.com/CaptainCompileon/applarchy/releases" rel="noopener">Release notes</a>
+          <a href="https://github.com/CaptainCompileon/applarchy" rel="noopener">Source code</a>
+          <a href="https://github.com/CaptainCompileon/applarchy#build-from-source" rel="noopener">Build from source</a>
+        </p>
       </div>
 
       <figure class="hero-screen reveal">
@@ -370,34 +383,6 @@
       </div>
     </section>
 
-    <!-- Download ----------------------------------------------------------- -->
-    <section class="download wrap" id="download">
-      <div class="dl-card reveal">
-        <h2 class="dl-title" data-scramble>GET APPLARCHY</h2>
-        <div class="install-options">
-          <div class="install-card install-card-main">
-            <p class="install-head"><span>TERMINAL</span><span class="install-tag">RECOMMENDED</span></p>
-            <div class="cmd-line"><span class="cmd-prompt" aria-hidden="true">$</span><code id="cmd">curl -fsSL https://raw.githubusercontent.com/CaptainCompileon/applarchy/main/scripts/install.sh | bash</code><button class="btn btn-sm" type="button" data-copy="#cmd">COPY</button></div>
-            <p class="install-note">Paste it into <b>Terminal</b>. It installs the latest release into <b>Applications</b>, and Applarchy opens with no extra click. Run it again to update.</p>
-          </div>
-          <div class="install-card">
-            <p class="install-head"><span>DMG</span></p>
-            <a class="big-btn" href="https://github.com/CaptainCompileon/applarchy/releases/latest" data-download rel="noopener">
-              <svg class="big-btn-icon" aria-hidden="true"><use href="#i-storm"/></svg>
-              <span class="big-btn-text"><span class="big-btn-title">DOWNLOAD</span><span class="big-btn-sub" data-version-line>Free · macOS 13 or later</span></span>
-              <span class="big-btn-arrow" aria-hidden="true">▶</span>
-            </a>
-            <p class="install-note">Open it and drag <b>Applarchy</b> into <b>Applications</b>. The first time, macOS refuses: open <b>System Settings → Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>.</p>
-          </div>
-        </div>
-        <p class="dl-then">Then open Applarchy, pick your effects, a logo and a theme, and <b>Apply Smooth Mode</b>.</p>
-        <p class="dl-links">
-          <a href="https://github.com/CaptainCompileon/applarchy/releases" rel="noopener">Release notes</a>
-          <a href="https://github.com/CaptainCompileon/applarchy" rel="noopener">Source code</a>
-          <a href="https://github.com/CaptainCompileon/applarchy#build-from-source" rel="noopener">Build from source</a>
-        </p>
-      </div>
-    </section>
   </main>
 
   <footer class="foot wrap">
