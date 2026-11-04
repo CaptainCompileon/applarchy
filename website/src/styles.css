@@ -24,13 +24,18 @@
   --shadow: rgb(255 255 255 / 0.28);
   --shadow-hi: rgb(255 255 255 / 0.55);
 
-  --f11: 11px; --f16: 16.5px; --f22: 22px; --f33: 33px; --f44: 44px;
-  --measure: 720px;
-  --page: clamp(960px, 66vw, 1360px);   /* every section, the nav and the footer share this width; it grows on wide screens */
+  --type: 1;                   /* text scale: grows on wide screens (below), with everything sized from it */
+  --f11: calc(11px * var(--type)); --f16: calc(16.5px * var(--type)); --f22: calc(22px * var(--type));
+  --f33: calc(33px * var(--type)); --f44: calc(44px * var(--type));
+  --measure: calc(720px * var(--type));
+  /* Every section, the nav and the footer share this width: two thirds of the window, within bounds. */
+  --page: clamp(960px, 66vw, calc(1360px * var(--type)));
   --gutter: 24px;
   --ease-px: steps(6, end);
   color-scheme: dark;
 }
+@media (min-width: 1800px) { :root { --type: 1.2; } }
+@media (min-width: 2300px) { :root { --type: 1.33; } }
 
 *, *::before, *::after { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 72px; -webkit-text-size-adjust: 100%; }
@@ -154,10 +159,10 @@ b { font-weight: 400; color: var(--ink); }
 /* ---------- hero ---------- */
 
 .hero { padding-top: 56px; }
-.lead { color: var(--muted); max-width: 640px; }
+.lead { color: var(--muted); max-width: calc(640px * var(--type)); }
 .wordmark-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: 36px auto 30px; }
-.wordmark { font-size: 110px; line-height: 1; letter-spacing: -0.01em; white-space: nowrap; }
-.hero-icon { width: 110px; height: 110px; flex: none; shape-rendering: crispEdges; }
+.wordmark { font-size: calc(110px * var(--type)); line-height: 1; letter-spacing: -0.01em; white-space: nowrap; }
+.hero-icon { width: calc(110px * var(--type)); height: calc(110px * var(--type)); flex: none; shape-rendering: crispEdges; }
 .hero-icon .bolt { fill: #fff; opacity: 0; animation: flash 6s infinite; }
 @keyframes flash {
   0%, 86%, 100% { opacity: 0; }
@@ -172,7 +177,7 @@ b { font-weight: 400; color: var(--ink); }
   border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 26px 0;
 }
 .band-title { font-size: var(--f16); line-height: 1.35; letter-spacing: 0.04em; }
-.band-note { font-size: var(--f11); color: var(--muted); text-align: right; justify-self: end; max-width: 260px; line-height: 1.5; }
+.band-note { font-size: var(--f11); color: var(--muted); text-align: right; justify-self: end; max-width: calc(260px * var(--type)); line-height: 1.5; }
 /* Install: two options side by side, the Terminal one-liner first. */
 .install-options { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .install-card { border: 1.5px solid var(--line); background: var(--surface); padding: 16px; display: grid; gap: 12px; align-content: start; min-width: 0; }
@@ -391,7 +396,7 @@ b { font-weight: 400; color: var(--ink); }
 .dl-title { font-size: var(--f33); line-height: 1.1; letter-spacing: 0.02em; }
 /* Which Macs, centred under the title, so nobody on Windows or Linux goes looking for a download. */
 .mac-only { display: grid; justify-items: center; gap: 10px; }
-.mac-only-icon { width: 40px; height: 49px; fill: currentColor; }   /* the outline of the system font's U+F8FF */
+.mac-only-icon { width: calc(40px * var(--type)); height: calc(49px * var(--type)); fill: currentColor; }   /* the outline of the system font's U+F8FF */
 .mac-only-title { font-size: var(--f22); letter-spacing: 0.06em; }
 .mac-only-sub { font-size: var(--f11); color: var(--muted); line-height: 1.5; }
 .cmd { display: grid; gap: 8px; font-size: var(--f11); }
