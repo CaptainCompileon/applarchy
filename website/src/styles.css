@@ -171,20 +171,23 @@ b { font-weight: 400; color: var(--ink); }
 }
 
 .band {
-  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 28px;
+  display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 28px;
   border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 26px 0;
 }
 .band-title { font-size: var(--f16); line-height: 1.35; letter-spacing: 0.04em; }
-.band-cta { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 440px; max-width: 100%; }
-.band-cta .big-btn { min-width: 300px; }
-.platforms { display: flex; gap: 0; font-size: var(--f11); color: var(--faint); }
+.platforms { display: flex; justify-content: flex-end; gap: 0; margin-top: 6px; color: var(--faint); }
 .platforms span + span::before { content: '·'; margin: 0 8px; }
-.band-note { font-size: var(--f11); color: var(--muted); text-align: right; justify-self: end; max-width: 220px; line-height: 1.5; }
-/* Install: a Terminal / DMG switch over the one-liner or the download button. */
-.install-panel { display: grid; gap: 8px; width: 100%; }
-.install-panel[hidden] { display: none; }
-.install-panel > .big-btn { justify-self: center; }
-.install-note { font-size: var(--f11); color: var(--faint); text-align: center; }
+.band-note { font-size: var(--f11); color: var(--muted); text-align: right; justify-self: end; max-width: 260px; line-height: 1.5; }
+/* Install: two options side by side, the Terminal one-liner first. */
+.hero > .install-options { max-width: 900px; margin: 22px auto 0; }
+.install-options { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.install-card { border: 1.5px solid var(--line); background: var(--surface); padding: 16px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.install-card-main { border-color: var(--accent); }
+.dl-card .install-card { background: var(--paper); }
+.install-head { display: flex; justify-content: space-between; gap: 12px; font-size: var(--f11); letter-spacing: 0.04em; }
+.install-tag { color: var(--accent); }
+.install-card .big-btn { min-width: 0; }
+.install-note { font-size: var(--f11); color: var(--muted); line-height: 1.5; }
 
 .hero-screen { margin: 56px 0 0; }
 
@@ -391,17 +394,11 @@ b { font-weight: 400; color: var(--ink); }
 .dl-card { border: 2px solid var(--line-2); background: var(--surface); padding: 40px 40px 36px; box-shadow: 8px 8px 0 var(--shadow); display: grid; gap: 28px; position: relative; overflow: hidden; }
 .dl-card::before { content: ''; position: absolute; inset: 0 0 auto; height: 4px; background: linear-gradient(90deg, var(--cyan), var(--accent), var(--omarchy)); }
 .dl-title { font-size: var(--f44); line-height: 1.1; letter-spacing: 0.02em; }
-.dl-card > .seg { justify-self: start; }
-.dl-card .install-panel { gap: 28px; }
-.dl-card .install-panel > .big-btn { justify-self: start; min-width: min(380px, 100%); }
-.steps .cmd-line { margin-top: 10px; }
-.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
-.steps li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 14px; align-items: start; }
-.step-n { width: 26px; height: 26px; display: grid; place-items: center; border: 1.5px solid var(--line-2); font-size: var(--f11); }
 .cmd { display: grid; gap: 8px; font-size: var(--f11); }
 .cmd-line { display: flex; gap: 10px; align-items: center; background: var(--paper); border: 1.5px solid var(--line); padding: 8px 8px 8px 12px; min-width: 0; }
 .cmd-prompt { color: var(--accent); flex: none; user-select: none; }
 .cmd-line code { background: none; border: 0; padding: 0; overflow-x: auto; white-space: nowrap; flex: 1; font-size: var(--f11); scrollbar-width: none; }
+.dl-then { font-size: var(--f11); color: var(--muted); }
 .dl-links { display: flex; gap: 22px; flex-wrap: wrap; font-size: var(--f11); }
 
 /* ---------- footer ---------- */
@@ -430,10 +427,9 @@ b { font-weight: 400; color: var(--ink); }
   .hero-icon { width: 56px; height: 56px; }
   .wordmark-row { margin: 26px auto 22px; }
   .band { grid-template-columns: 1fr; gap: 18px; text-align: left; }
-  .band-cta { align-items: stretch; }
-  .band-cta .big-btn { min-width: 0; }
-  .platforms { justify-content: center; }
+  .platforms { justify-content: flex-start; }
   .band-note { text-align: left; justify-self: start; max-width: none; }
+  .install-options { grid-template-columns: 1fr; }
   .hero-screen { margin-top: 36px; }
   .caption-hint { margin-left: 0; }
   .ch-title { font-size: var(--f22); }
