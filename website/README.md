@@ -27,6 +27,9 @@ After changing the engine, rebuild the WebAssembly with `npm run wasm` (needs ru
 ## Deploy
 
 Vercel, with `website` as the project's root directory (framework: Vite, `vercel.json`).
+Every push to `main` deploys it to production (`.github/workflows/website.yml`, which needs
+a `VERCEL_TOKEN` repository secret); **Actions → Website → Run workflow** redeploys by hand.
+From your Mac:
 
 ```bash
 npx vercel --prod

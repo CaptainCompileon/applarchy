@@ -1,0 +1,55 @@
+name: Website
+
+# Deploys website/ to Vercel production (applarchy.vercel.app) on every push to main, and by
+# hand from the Actions tab: what `npx vercel --prod` in website/ does, built on the runner.
+# Needs the VERCEL_TOKEN secret (vercel.com/account/tokens); the IDs below come from
+# website/.vercel/project.json and aren't secret.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Deploys run one at a time, in push order, so the newest push is the one left live.
+concurrency:
+  group: website-deploy
+  cancel-in-progress: false
+
+env:
+  VERCEL_ORG_ID: team_7JiBplV8GwfyKiCJddc9320N
+  VERCEL_PROJECT_ID: prj_sQafZ2qaJSS3e6rMBevSL59yHyGG
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26                       # the Vercel project's Node.js version
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Vercel CLI
+        run: |
+          [ -n "$VERCEL_TOKEN" ] || { echo "::error::Add a VERCEL_TOKEN repository secret (vercel.com/account/tokens)"; exit 1; }
+          npm install --global vercel@65.11.0
+
+      # The project's settings and production environment variables, then the build
+      # (vercel.json: npm run build into dist/), as Vercel's own build would do it.
+      - name: Build
+        run: |
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          echo "Deployed $url" | tee -a "$GITHUB_STEP_SUMMARY"
