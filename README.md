@@ -111,6 +111,12 @@ Spotlights · Spray · Swarm · Sweep · Synth Grid · Thunderstorm · Unstable 
 > xattr -dr com.apple.quarantine /Applications/Applarchy.app
 > ```
 
+**Or in Terminal**, which skips the first-launch step (run it again to update):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/CaptainCompileon/applarchy/main/scripts/install.sh | bash
+```
+
 **Requirements:** macOS 13 Ventura or later, on Apple Silicon or Intel.
 
 ## Usage
