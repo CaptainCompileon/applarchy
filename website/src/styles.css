@@ -192,7 +192,7 @@ b { font-weight: 400; color: var(--ink); }
 .install-card .cmd-line { border: 2px solid var(--accent); background: var(--surface); padding: 14px 12px 14px 16px; gap: 12px;
   box-shadow: 4px 4px 0 color-mix(in srgb, var(--accent) 45%, transparent);
   min-height: calc(34.1px * var(--type) + 35px); }   /* the button's height (its two lines, padding, border) when the cards stack */
-.install-card .cmd-line code, .install-card .cmd-prompt { font-size: var(--f16); }
+.install-card .cmd-line code, .install-card .cmd-prompt { font-size: var(--f11); }
 .install-note { font-size: var(--f11); color: var(--muted); line-height: 1.5; }
 
 .hero-screen { margin: 96px 0 0; }   /* well clear of the download card */
