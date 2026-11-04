@@ -378,6 +378,21 @@ new IntersectionObserver(([e]) => {
 
 // ---------------------------------------------------------------- download
 
+// Terminal (the default) or DMG: the hero's switch and the download card's move together,
+// and the choice is remembered.
+type Method = 'terminal' | 'dmg'
+const methodSegs = $$('[data-install-seg]')
+function setMethod(m: Method) {
+  methodSegs.forEach(g => $$<HTMLButtonElement>('button', g).forEach(b => {
+    const on = b.dataset.method === m
+    b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1
+  }))
+  $$<HTMLElement>('[data-method-panel]').forEach(p => { p.hidden = p.dataset.methodPanel !== m })
+  try { localStorage.setItem('applarchy-install', m) } catch { /* fine */ }
+}
+methodSegs.forEach(g => segmented(g, b => setMethod(b.dataset.method as Method)))
+try { if (localStorage.getItem('applarchy-install') === 'dmg') setMethod('dmg') } catch { /* fine */ }
+
 $$<HTMLButtonElement>('[data-copy]').forEach(b => b.addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText($(b.dataset.copy!).textContent ?? '')

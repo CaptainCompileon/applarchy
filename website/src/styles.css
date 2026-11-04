@@ -175,14 +175,16 @@ b { font-weight: 400; color: var(--ink); }
   border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 26px 0;
 }
 .band-title { font-size: var(--f16); line-height: 1.35; letter-spacing: 0.04em; }
-.band-cta { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.band-cta { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 440px; max-width: 100%; }
 .band-cta .big-btn { min-width: 300px; }
 .platforms { display: flex; gap: 0; font-size: var(--f11); color: var(--faint); }
 .platforms span + span::before { content: '·'; margin: 0 8px; }
 .band-note { font-size: var(--f11); color: var(--muted); text-align: right; justify-self: end; max-width: 220px; line-height: 1.5; }
-/* The install one-liner, right under the download band. */
-.hero > .hero-cmd { max-width: 900px; margin: 18px auto 0; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 16px; font-size: var(--f11); }
-.hero-cmd-label { color: var(--faint); letter-spacing: 0.04em; }
+/* Install: a Terminal / DMG switch over the one-liner or the download button. */
+.install-panel { display: grid; gap: 8px; width: 100%; }
+.install-panel[hidden] { display: none; }
+.install-panel > .big-btn { justify-self: center; }
+.install-note { font-size: var(--f11); color: var(--faint); text-align: center; }
 
 .hero-screen { margin: 56px 0 0; }
 
@@ -389,9 +391,12 @@ b { font-weight: 400; color: var(--ink); }
 .dl-card { border: 2px solid var(--line-2); background: var(--surface); padding: 40px 40px 36px; box-shadow: 8px 8px 0 var(--shadow); display: grid; gap: 28px; position: relative; overflow: hidden; }
 .dl-card::before { content: ''; position: absolute; inset: 0 0 auto; height: 4px; background: linear-gradient(90deg, var(--cyan), var(--accent), var(--omarchy)); }
 .dl-title { font-size: var(--f44); line-height: 1.1; letter-spacing: 0.02em; }
-.dl-card > .big-btn { justify-self: start; min-width: min(380px, 100%); }
+.dl-card > .seg { justify-self: start; }
+.dl-card .install-panel { gap: 28px; }
+.dl-card .install-panel > .big-btn { justify-self: start; min-width: min(380px, 100%); }
+.steps .cmd-line { margin-top: 10px; }
 .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
-.steps li { display: grid; grid-template-columns: 30px 1fr; gap: 14px; align-items: start; }
+.steps li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 14px; align-items: start; }
 .step-n { width: 26px; height: 26px; display: grid; place-items: center; border: 1.5px solid var(--line-2); font-size: var(--f11); }
 .cmd { display: grid; gap: 8px; font-size: var(--f11); }
 .cmd-line { display: flex; gap: 10px; align-items: center; background: var(--paper); border: 1.5px solid var(--line); padding: 8px 8px 8px 12px; min-width: 0; }
@@ -429,7 +434,6 @@ b { font-weight: 400; color: var(--ink); }
   .band-cta .big-btn { min-width: 0; }
   .platforms { justify-content: center; }
   .band-note { text-align: left; justify-self: start; max-width: none; }
-  .hero > .hero-cmd { grid-template-columns: 1fr; gap: 8px; }
   .hero-screen { margin-top: 36px; }
   .caption-hint { margin-left: 0; }
   .ch-title { font-size: var(--f22); }
