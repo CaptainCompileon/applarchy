@@ -180,6 +180,9 @@ b { font-weight: 400; color: var(--ink); }
 .platforms { display: flex; gap: 0; font-size: var(--f11); color: var(--faint); }
 .platforms span + span::before { content: '·'; margin: 0 8px; }
 .band-note { font-size: var(--f11); color: var(--muted); text-align: right; justify-self: end; max-width: 220px; line-height: 1.5; }
+/* The install one-liner, right under the download band. */
+.hero > .hero-cmd { max-width: 900px; margin: 18px auto 0; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 16px; font-size: var(--f11); }
+.hero-cmd-label { color: var(--faint); letter-spacing: 0.04em; }
 
 .hero-screen { margin: 56px 0 0; }
 
@@ -392,6 +395,7 @@ b { font-weight: 400; color: var(--ink); }
 .step-n { width: 26px; height: 26px; display: grid; place-items: center; border: 1.5px solid var(--line-2); font-size: var(--f11); }
 .cmd { display: grid; gap: 8px; font-size: var(--f11); }
 .cmd-line { display: flex; gap: 10px; align-items: center; background: var(--paper); border: 1.5px solid var(--line); padding: 8px 8px 8px 12px; min-width: 0; }
+.cmd-prompt { color: var(--accent); flex: none; user-select: none; }
 .cmd-line code { background: none; border: 0; padding: 0; overflow-x: auto; white-space: nowrap; flex: 1; font-size: var(--f11); scrollbar-width: none; }
 .dl-links { display: flex; gap: 22px; flex-wrap: wrap; font-size: var(--f11); }
 
@@ -425,6 +429,7 @@ b { font-weight: 400; color: var(--ink); }
   .band-cta .big-btn { min-width: 0; }
   .platforms { justify-content: center; }
   .band-note { text-align: left; justify-self: start; max-width: none; }
+  .hero > .hero-cmd { grid-template-columns: 1fr; gap: 8px; }
   .hero-screen { margin-top: 36px; }
   .caption-hint { margin-left: 0; }
   .ch-title { font-size: var(--f22); }
