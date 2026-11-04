@@ -9,7 +9,7 @@ name: Release
 on:
   push:
     branches: [main]
-    paths-ignore: ["**.md", "docs/**", ".vscode/**"]
+    paths-ignore: ["**.md", "docs/**", ".vscode/**", "website/**"]
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
   workflow_dispatch:

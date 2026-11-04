@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Applarchy — Omarchy's screensaver, reborn on macOS</title>
+  <meta name="description" content="37 pixel-art text effects over the Apple logo, as a macOS screensaver or a live wallpaper. Free and open source.">
+  <meta name="theme-color" content="#0c0c0d">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Applarchy — Omarchy's screensaver, reborn on macOS">
+  <meta property="og:description" content="37 pixel-art text effects over the Apple logo, as a screensaver or a live wallpaper. Free and open source.">
+  <link rel="canonical" href="https://applarchy.vercel.app/">
+  <meta property="og:url" content="https://applarchy.vercel.app/">
+  <meta property="og:image" content="https://applarchy.vercel.app/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preload" href="/fonts/DepartureMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  <script>document.documentElement.classList.add('js');setTimeout(function(){if(!window.applarchy)document.documentElement.classList.remove('js')},4000)</script>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="g-cloud" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#00d1ff"/><stop offset=".55" stop-color="#7a5cf0"/><stop offset="1" stop-color="#a300a3"/>
+      </linearGradient>
+      <symbol id="i-storm" viewBox="0 0 12 12"><path d="M4 1h4v1h-4zM2 2h8v1h-8zM1 3h10v1h-10zM0 4h12v1h-12zM0 5h12v1h-12zM1 6h10v1h-10zM6 7h1v1h-1zM5 8h2v1h-2zM4 9h4v1h-4zM5 10h2v1h-2zM5 11h1v1h-1z"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 12 12"><path d="M10 0h1v1h-1zM9 1h3v1h-3zM2 2h2v1h-2zM10 2h1v1h-1zM1 3h3v1h-3zM1 4h3v1h-3zM0 5h4v1h-4zM0 6h4v1h-4zM0 7h5v1h-5zM1 8h5v1h-5zM1 9h8v1h-8zM2 10h6v1h-6z"/></symbol>
+      <symbol id="i-logo" viewBox="0 0 40 42"><path d="M15 0h10v2h-10zM11 2h16v2h-16zM11 4h18v2h-18zM9 6h20v1h-20zM8 7h21v1h-21zM8 8h25v1h-25zM8 9h26v1h-26zM5 10h33v1h-33zM4 11h34v2h-34zM2 13h36v2h-36zM0 15h40v10h-40zM0 25h38v2h-38zM17 27h4v2h-4zM15 29h10v2h-10zM19 31h4v3h-4zM17 34h4v2h-4zM15 36h4v1h-4zM14 37h5v1h-5zM13 38h4v2h-4zM13 40h2v2h-2z"/></symbol>
+    </defs>
+  </svg>
+
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="progress" aria-hidden="true"></div>
+
+  <header class="nav">
+    <div class="nav-in">
+      <a class="brand" href="#top" aria-label="Applarchy, back to top">
+        <svg class="brand-icon" aria-hidden="true"><use href="#i-storm" fill="url(#g-cloud)"/></svg>
+        <span>APPLARCHY</span>
+      </a>
+      <nav aria-label="Sections">
+        <ul class="nav-links">
+          <li><a href="#effects">Effects</a></li>
+          <li><a href="#look">Themes</a></li>
+          <li><a href="#modes">Modes</a></li>
+          <li><a href="#hood">How it works</a></li>
+        </ul>
+      </nav>
+      <a class="nav-gh" href="https://github.com/CaptainCompileon/applarchy" rel="noopener">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span class="nav-gh-label">GitHub</span><span class="stars" data-stars></span>
+      </a>
+      <a class="btn btn-sm btn-accent nav-dl" href="#download">Download</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- Hero ------------------------------------------------------------- -->
+    <section class="hero wrap" id="top">
+      <p class="lead reveal">Omarchy's terminal-art screensaver, reborn on macOS. Thirty-seven pixel-art text effects over the Apple logo, as a screensaver or a live wallpaper.</p>
+      <div class="wordmark-row">
+        <h1 class="wordmark" data-scramble aria-label="Applarchy">APPLARCHY</h1>
+        <svg class="hero-icon" aria-hidden="true" viewBox="0 0 12 12">
+          <use href="#i-storm" fill="url(#g-cloud)"/>
+          <path class="bolt" d="M6 7h1v1h-1zM5 8h2v1h-2zM4 9h4v1h-4zM5 10h2v1h-2zM5 11h1v1h-1z"/>
+        </svg>
+      </div>
+      <div class="band reveal">
+        <p class="band-title">A SCREENSAVER<br>&amp; LIVE WALLPAPER<br>FOR THE MAC</p>
+        <div class="band-cta">
+          <a class="big-btn" href="#download" data-download>
+            <svg class="big-btn-icon" aria-hidden="true"><use href="#i-storm"/></svg>
+            <span class="big-btn-text"><span class="big-btn-title">DOWNLOAD</span><span class="big-btn-sub" data-version-line>Free · macOS 13 or later</span></span>
+            <span class="big-btn-arrow" aria-hidden="true">▶</span>
+          </a>
+          <p class="platforms"><span>Apple Silicon</span><span>Intel</span><span>Universal</span></p>
+        </div>
+        <p class="band-note">Free and open source, MIT. No account, no tracking.</p>
+      </div>
+
+      <figure class="hero-screen reveal">
+        <div class="frame frame-lg">
+          <div class="frame-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="frame-title">Screen Saver</span></div>
+          <div class="screen-host" id="hero-screen" role="img" aria-label="Live demo: a text effect plays over the logo, under a pixel clock."></div>
+        </div>
+        <figcaption class="screen-caption">
+          <span class="live"><i aria-hidden="true"></i>LIVE</span>
+          <span class="now-playing" id="hero-now" aria-live="polite">Loading the engine…</span>
+          <span class="caption-hint">The real engine, compiled to WebAssembly · click for full screen</span>
+        </figcaption>
+      </figure>
+    </section>
+
+    <!-- I. The idea ------------------------------------------------------- -->
+    <section class="chapter wrap" id="idea">
+      <h2 class="ch-title"><span class="ch-num">I.</span> <span data-scramble>THE IDEA</span></h2>
+      <div class="prose reveal">
+        <p><a href="https://github.com/basecamp/omarchy" rel="noopener">Omarchy</a> ships a screensaver that plays random effects from <a href="https://github.com/ChrisBuilds/terminaltexteffects" rel="noopener">TerminalTextEffects</a> over its logo, in a terminal.</p>
+        <p>Applarchy brings the same effects to the Mac. Not in a terminal window, but as a real macOS screensaver and a live desktop wallpaper, with the effect engine compiled right in.</p>
+        <p>Every frame is still text: the engine moves coloured characters around a grid. Applarchy draws that grid as pixel art, block characters as exact rectangles, so the logo stays crisp on any display.</p>
+      </div>
+      <figure class="idea-fig reveal" aria-label="A terminal's characters become pixel art.">
+        <div class="term">
+          <div class="term-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>terminal</div>
+<pre class="term-body" aria-hidden="true"><span class="t-dim">$</span> tte decrypt
+<span class="t1">  ▄▄██████▄▄</span>
+<span class="t2"> ████████████</span>
+<span class="t3">██████████████</span>
+<span class="t4">▀▀▀▀▀██▀▀▀▀▀▀</span>
+<span class="t5">    ▄██▀</span>
+<span class="t6">   ██</span></pre>
+        </div>
+        <div class="idea-arrow" aria-hidden="true"><span>▶</span></div>
+        <div class="pix">
+          <svg viewBox="0 0 40 42" aria-hidden="true"><use href="#i-logo" fill="url(#g-cloud)"/></svg>
+          <span class="pix-scan" aria-hidden="true"></span>
+        </div>
+        <figcaption>Same engine, same frames. Drawn as pixels instead of characters.</figcaption>
+      </figure>
+    </section>
+
+    <!-- II. The effects (the app, live) ----------------------------------- -->
+    <section class="chapter wrap wrap-wide" id="effects">
+      <h2 class="ch-title"><span class="ch-num">II.</span> <span data-scramble>THE EFFECTS</span></h2>
+      <div class="prose reveal">
+        <p>All 37, from the same engine Omarchy uses: beams, matrix rain, thunderstorms, fireworks, black holes, decrypt and more. Tick the ones you like; your picks play in random order, each once before any repeats.</p>
+        <p class="muted">This is Applarchy's window, working. Click an effect's name to preview just that one.</p>
+      </div>
+
+      <div class="app reveal" id="app">
+        <div class="app-bar"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="app-title">Applarchy</span></div>
+        <div class="app-body">
+          <aside class="fx-pane" aria-label="Effects">
+            <div class="fx-head">
+              <h3 class="fx-title">EFFECTS</h3>
+              <span class="fx-head-btns">
+                <button class="btn btn-sm" type="button" data-fx="all">ALL</button>
+                <button class="btn btn-sm" type="button" data-fx="none">NONE</button>
+              </span>
+            </div>
+            <ul class="fx-list" id="fx-list"></ul>
+            <p class="fx-foot" id="fx-foot">8/37 selected · click a name to preview</p>
+          </aside>
+
+          <div class="app-main">
+            <div class="screen-host app-preview" id="app-screen" role="img" aria-label="Preview of the selected effects"></div>
+            <p class="app-status" id="app-status" aria-live="polite">Previewing your selection</p>
+
+            <div class="controls">
+              <div class="row">
+                <span class="row-label" id="lbl-logo">LOGO</span>
+                <div class="seg" role="radiogroup" aria-labelledby="lbl-logo" id="logo-seg">
+                  <button type="button" role="radio" aria-checked="true" data-logo="default">Chill Guy</button>
+                  <button type="button" role="radio" aria-checked="false" data-logo="storm">Storm</button>
+                  <button type="button" role="radio" aria-checked="false" data-logo="custom">Custom</button>
+                </div>
+              </div>
+              <div class="row row-custom" id="custom-row" hidden>
+                <span class="row-label"><label for="custom-text">TEXT</label></span>
+                <div class="custom-input">
+                  <input id="custom-text" type="text" maxlength="14" value="HELLO" autocomplete="off" spellcheck="false">
+                  <span class="muted">or draw one below, in <a href="#logo-pad">Your own logo</a></span>
+                </div>
+              </div>
+              <div class="row">
+                <span class="row-label" id="lbl-theme">THEME</span>
+                <div class="row-wrap">
+                  <div class="swatches" role="radiogroup" aria-labelledby="lbl-theme" id="theme-swatches"></div>
+                  <span class="theme-name" id="theme-name">Tokyo Night</span>
+                </div>
+              </div>
+              <div class="row">
+                <span class="row-label">CLOCK</span>
+                <div class="row-wrap">
+                  <label class="check"><input type="checkbox" id="clock-show" checked><span class="box" aria-hidden="true"></span>Show</label>
+                  <label class="check"><input type="checkbox" id="clock-date" checked><span class="box" aria-hidden="true"></span>Date</label>
+                  <div class="seg seg-sm" role="radiogroup" aria-label="Hour cycle" id="hour-seg">
+                    <button type="button" role="radio" aria-checked="true" data-hour="auto">AUTO</button>
+                    <button type="button" role="radio" aria-checked="false" data-hour="12">12H</button>
+                    <button type="button" role="radio" aria-checked="false" data-hour="24">24H</button>
+                  </div>
+                  <div class="seg seg-sm" role="radiogroup" aria-label="Clock size" id="size-seg">
+                    <button type="button" role="radio" aria-checked="true" data-size="small">SMALL</button>
+                    <button type="button" role="radio" aria-checked="false" data-size="large">LARGE</button>
+                  </div>
+                </div>
+              </div>
+              <div class="row">
+                <span class="row-label" id="lbl-pause">PAUSE</span>
+                <div class="seg seg-sm" role="radiogroup" aria-labelledby="lbl-pause" id="pause-seg">
+                  <button type="button" role="radio" aria-checked="false" data-pause="1000">1 S</button>
+                  <button type="button" role="radio" aria-checked="true" data-pause="3000">3 S</button>
+                  <button type="button" role="radio" aria-checked="false" data-pause="10000">10 S</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <a class="big-btn" href="#download">
+                <svg class="big-btn-icon" aria-hidden="true"><use href="#i-moon"/></svg>
+                <span class="big-btn-text"><span class="big-btn-title">USE AS SCREENSAVER</span><span class="big-btn-sub">Plays when your Mac is idle</span></span>
+                <span class="big-btn-arrow" aria-hidden="true">▶</span>
+              </a>
+              <a class="big-btn" href="#download">
+                <svg class="big-btn-icon" aria-hidden="true"><use href="#i-storm"/></svg>
+                <span class="big-btn-text"><span class="big-btn-title">USE AS WALLPAPER</span><span class="big-btn-sub">Lives on your desktop</span></span>
+                <span class="big-btn-arrow" aria-hidden="true">▶</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- III. The look ----------------------------------------------------- -->
+    <section class="chapter wrap" id="look">
+      <h2 class="ch-title"><span class="ch-num">III.</span> <span data-scramble>THE LOOK</span></h2>
+
+      <h3 class="sub-title reveal"><span class="sub-num">i)</span> THEMES</h3>
+      <div class="prose reveal">
+        <p>Omarchy's own colours, or eight of its themes. A theme recolours the effects, the background and the clock. Or make your own: background, clock, gradient and effect colours.</p>
+        <p class="muted">Hover one to play it. Click to use it in the window above.</p>
+      </div>
+      <div class="themes reveal" id="themes"></div>
+
+      <hr class="rule">
+
+      <h3 class="sub-title reveal" id="logo-pad"><span class="sub-num">ii)</span> YOUR OWN LOGO</h3>
+      <div class="prose reveal">
+        <p>Choose your vibe: <em>Chill Guy</em>, or your own logo from any picture, pasted text art or a blank canvas, touched up square by square. Every effect animates it. Logos you use are kept in My Logos, to export and share.</p>
+        <p class="muted">Draw here: click or drag to fill squares, start on a filled one or right-click to erase.</p>
+      </div>
+      <div class="pad reveal">
+        <div class="pad-editor">
+          <div class="pad-grid" id="pad-grid" role="grid" aria-label="Logo drawing grid"></div>
+          <div class="pad-tools">
+            <button class="btn btn-sm" type="button" id="pad-clear">CLEAR</button>
+            <button class="btn btn-sm" type="button" id="pad-reset">STORM</button>
+            <button class="btn btn-sm" type="button" id="pad-invert">INVERT</button>
+            <span class="pad-size muted" id="pad-size"></span>
+          </div>
+        </div>
+        <div class="pad-side">
+          <div class="screen-host pad-preview" id="pad-screen" role="img" aria-label="Your logo, animated"></div>
+          <p class="pad-caption muted"><span id="pad-now">PREVIEW</span></p>
+          <div class="pad-actions">
+            <button class="btn btn-accent" type="button" id="pad-play">PLAY ▶</button>
+            <button class="btn" type="button" id="pad-use">USE THIS LOGO ▲</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- IV. The modes ----------------------------------------------------- -->
+    <section class="chapter wrap" id="modes">
+      <h2 class="ch-title"><span class="ch-num">IV.</span> <span data-scramble>THE MODES</span></h2>
+
+      <h3 class="sub-title reveal"><span class="sub-num">i)</span> SMOOTH MODE</h3>
+      <div class="prose reveal">
+        <p>The default. One click sets the screensaver, the lock screen and the desktop to one look. When you come back, the animation plays out and the logo glides to the centre, the same way on the lock screen and on the desktop, which carries on from where the screensaver was.</p>
+        <p class="muted">Turn it off and your previous wallpaper and lock screen come back.</p>
+      </div>
+      <figure class="smooth reveal" aria-label="Screensaver, then lock screen, then desktop: the same look throughout.">
+        <div class="smooth-track">
+          <div class="mini mini-saver">
+            <span class="mini-label">SCREENSAVER</span>
+            <div class="mini-screen"><div class="screen-host" id="smooth-saver"></div></div>
+          </div>
+          <span class="smooth-arrow" aria-hidden="true">▶</span>
+          <div class="mini mini-lock">
+            <span class="mini-label">LOCK SCREEN</span>
+            <div class="mini-screen"><div class="screen-host" id="smooth-lock"></div></div>
+          </div>
+          <span class="smooth-arrow" aria-hidden="true">▶</span>
+          <div class="mini mini-desk">
+            <span class="mini-label">DESKTOP</span>
+            <div class="mini-screen">
+              <div class="screen-host" id="smooth-desk"></div>
+              <span class="mini-menubar" aria-hidden="true"><span></span><svg viewBox="0 0 12 12"><use href="#i-storm" fill="currentColor"/></svg></span>
+              <span class="mini-dock" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+            </div>
+          </div>
+        </div>
+        <figcaption>The clock steps aside and the logo glides to the centre of the desktop.</figcaption>
+      </figure>
+
+      <hr class="rule">
+
+      <h3 class="sub-title reveal"><span class="sub-num">ii)</span> SCREENSAVER</h3>
+      <div class="prose reveal">
+        <p>Appears in System Settings → Screen Saver, with an optional pixel-font clock: 12- or 24-hour or following the system, with or without the date, small or large. On every display, the same effect plays in step.</p>
+      </div>
+
+      <hr class="rule">
+
+      <h3 class="sub-title reveal"><span class="sub-num">iii)</span> LIVE WALLPAPER</h3>
+      <div class="prose reveal">
+        <p>Runs behind your desktop icons on every screen and Space, and pauses itself whenever the desktop is covered, the display sleeps or the screensaver runs. Pause it or turn it off from the storm cloud in the menu bar.</p>
+      </div>
+      <figure class="wall reveal" aria-label="When a window covers the desktop, the wallpaper pauses.">
+        <div class="wall-screen" id="wall">
+          <div class="screen-host" id="wall-screen"></div>
+          <span class="mini-menubar" aria-hidden="true"><span></span><svg viewBox="0 0 12 12"><use href="#i-storm" fill="currentColor"/></svg></span>
+          <div class="wall-window" aria-hidden="true"><span class="dots"><i></i><i></i><i></i></span><b></b><b></b><b></b><b class="short"></b></div>
+          <span class="wall-state" aria-live="off"><span class="s-play">▶ PLAYING</span><span class="s-pause">PAUSED · DESKTOP COVERED</span></span>
+        </div>
+        <div class="wall-opts">
+          <div class="opt">
+            <span class="row-label">FRAME RATE</span>
+            <span class="chips"><span>AUTO</span><span>120</span><span>60</span><span class="on">30</span><span>15</span></span>
+          </div>
+          <p class="muted">Auto matches each display's refresh rate, up to 120 fps. Frame rate and battery options apply instantly.</p>
+          <div class="opt">
+            <span class="check check-static"><span class="box on" aria-hidden="true"></span>Pause on battery</span>
+            <span class="check check-static"><span class="box on" aria-hidden="true"></span>Pause in Low Power Mode</span>
+          </div>
+        </div>
+      </figure>
+    </section>
+
+    <!-- V. Under the hood -------------------------------------------------- -->
+    <section class="chapter wrap" id="hood">
+      <h2 class="ch-title"><span class="ch-num">V.</span> <span data-scramble>UNDER THE HOOD</span></h2>
+      <div class="prose reveal">
+        <p>The effects come from <a href="https://github.com/omacom/ttfx" rel="noopener">ttfx</a>, the Rust port of TerminalTextEffects that Omarchy uses, embedded with a small C API that builds an effect on a fixed canvas and hands out frames one at a time. A native screensaver view parses each frame's cells and draws them as pixel art.</p>
+      </div>
+      <figure class="pipe reveal" aria-label="ttfx, then the C API, then ANSI frames, then the pixel renderer, then your screens.">
+        <ol class="pipe-steps">
+          <li><b>ttfx</b><span>Rust · 37 effects</span></li>
+          <li><b>C API</b><span>one frame at a time</span></li>
+          <li><b>ANSI cells</b><span>colour + character</span></li>
+          <li><b>Pixel renderer</b><span>blocks as rectangles</span></li>
+          <li><b>Your screens</b><span>saver · wallpaper · preview</span></li>
+        </ol>
+        <figcaption class="pipe-live">
+          <span class="live"><i aria-hidden="true"></i>THIS PAGE</span>
+          <span>The same engine, compiled to WebAssembly: <b data-stat="frames">0</b> frames of <b data-stat="effects">0</b> effects so far, <b data-stat="cost">–</b> ms of engine time per frame.</span>
+        </figcaption>
+      </figure>
+
+      <ul class="facts reveal">
+        <li><h4>120 FPS PACE</h4><p>Effects run at Omarchy's 120 fps pace whatever the frame rate. Each tick catches the engine up to where it should be, so a slow tick drops a drawn frame instead of slowing the effect.</p></li>
+        <li><h4>CRISP, AND CHEAP</h4><p>The wallpaper draws into an 8-bit bitmap at 1× and lets the compositor scale it up nearest-neighbour: crisp pixel art at a fraction of the cost of a Retina redraw.</p></li>
+        <li><h4>EVERY SCREEN IN STEP</h4><p>All screens play the same effect, seed and timing. The layout scales to the tighter of width or height, so ultrawide and portrait displays look like a laptop's.</p></li>
+        <li><h4>DRAWN, NOT SHIPPED</h4><p>The logo isn't artwork in the app: it's drawn at runtime from your Mac's own system font and resampled into half-block pixels.</p></li>
+        <li><h4>REDUCE MOTION AWARE</h4><p>With macOS's Reduce Motion on, only the calm effects play. This page does the same.</p></li>
+        <li><h4>UNIVERSAL</h4><p>Runs natively on Apple Silicon and Intel Macs, macOS 13 Ventura or later.</p></li>
+      </ul>
+    </section>
+
+    <!-- VI. The terms ------------------------------------------------------ -->
+    <section class="chapter wrap" id="terms">
+      <h2 class="ch-title"><span class="ch-num">VI.</span> <span data-scramble>THE TERMS</span></h2>
+      <div class="prose reveal">
+        <p>Free and open source under the MIT licence. No account, no subscription, no analytics.</p>
+        <p>Applarchy makes one network request: once a day it asks GitHub's public API for the latest release, to tell you about updates. Nothing about you or your Mac is sent.</p>
+        <p>It isn't signed with an Apple Developer ID yet, so the first launch needs one extra click in System Settings. After that it opens like any other app.</p>
+      </div>
+    </section>
+
+    <!-- Download ----------------------------------------------------------- -->
+    <section class="download wrap" id="download">
+      <div class="dl-card reveal">
+        <h2 class="dl-title" data-scramble>GET APPLARCHY</h2>
+        <a class="big-btn big-btn-accent" href="https://github.com/CaptainCompileon/applarchy/releases/latest" data-download rel="noopener">
+          <svg class="big-btn-icon" aria-hidden="true"><use href="#i-storm"/></svg>
+          <span class="big-btn-text"><span class="big-btn-title">DOWNLOAD THE DMG</span><span class="big-btn-sub" data-version-line>Latest release · macOS 13 or later</span></span>
+          <span class="big-btn-arrow" aria-hidden="true">▶</span>
+        </a>
+        <ol class="steps">
+          <li><span class="step-n">1</span><span>Open <code>Applarchy-&lt;version&gt;.dmg</code> and drag <b>Applarchy</b> into <b>Applications</b>.</span></li>
+          <li><span class="step-n">2</span><span>Open Applarchy. The first time, macOS refuses: open <b>System Settings → Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>.</span></li>
+          <li><span class="step-n">3</span><span>Pick your effects, a logo and a theme, then <b>Apply Smooth Mode</b>.</span></li>
+        </ol>
+        <div class="cmd">
+          <span class="muted">Or, in Terminal, instead of step 2:</span>
+          <div class="cmd-line"><code id="cmd">xattr -dr com.apple.quarantine /Applications/Applarchy.app</code><button class="btn btn-sm" type="button" data-copy="#cmd">COPY</button></div>
+        </div>
+        <p class="dl-links">
+          <a href="https://github.com/CaptainCompileon/applarchy/releases" rel="noopener">Release notes</a>
+          <a href="https://github.com/CaptainCompileon/applarchy" rel="noopener">Source code</a>
+          <a href="https://github.com/CaptainCompileon/applarchy#build-from-source" rel="noopener">Build from source</a>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot wrap">
+    <div class="foot-row">
+      <a class="brand" href="#top"><svg class="brand-icon" aria-hidden="true"><use href="#i-storm" fill="url(#g-cloud)"/></svg><span>APPLARCHY</span></a>
+      <p class="muted">Every effect is the design of <a href="https://github.com/ChrisBuilds/terminaltexteffects" rel="noopener">TerminalTextEffects</a> by ChrisBuilds, through <a href="https://github.com/omacom/ttfx" rel="noopener">ttfx</a> by omacom. Inspired by <a href="https://github.com/basecamp/omarchy" rel="noopener">Omarchy</a> by Basecamp. Set in <a href="https://departuremono.com" rel="noopener">Departure Mono</a> by Helena Zhang.</p>
+    </div>
+    <p class="fine">Applarchy is a fan project and is not affiliated with, endorsed by or sponsored by Apple Inc. or Basecamp. Apple and the Apple logo are trademarks of Apple Inc., registered in the U.S. and other countries. Omarchy is a project by Basecamp.</p>
+  </footer>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
