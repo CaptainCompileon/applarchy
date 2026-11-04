@@ -391,7 +391,7 @@ b { font-weight: 400; color: var(--ink); }
 .dl-title { font-size: var(--f33); line-height: 1.1; letter-spacing: 0.02em; }
 /* Which Macs, centred under the title, so nobody on Windows or Linux goes looking for a download. */
 .mac-only { display: grid; justify-items: center; gap: 10px; }
-.mac-only-icon { width: 39px; height: 51px; shape-rendering: crispEdges; fill: currentColor; }   /* the 13 × 17 grid, 3 px a square */
+.mac-only-icon { width: 40px; height: 49px; fill: currentColor; }   /* the outline of the system font's U+F8FF */
 .mac-only-title { font-size: var(--f22); letter-spacing: 0.06em; }
 .mac-only-sub { font-size: var(--f11); color: var(--muted); line-height: 1.5; }
 .cmd { display: grid; gap: 8px; font-size: var(--f11); }
