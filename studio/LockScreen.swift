@@ -5,8 +5,13 @@ import AppKit
 /// setting it Applarchy copies that exact entry (as macOS wrote it) into the
 /// display-wide and system-default slots and every Space of the wallpaper store,
 /// then restarts WallpaperAgent to load it. The store is backed up first and put
-/// back by restore(), which also brings back aerial and dynamic wallpapers.
+/// back by restore(), which also brings back aerial and dynamic wallpapers (and the
+/// screensaver chosen before, which lives in the same store: see Screensaver.select).
 enum LockScreen {
+    /// Every change to the wallpaper store goes through here, one at a time: each one
+    /// reads the whole store and writes it back, so two at once would lose one.
+    static let storeQueue = DispatchQueue(label: "Applarchy.wallpaper-store")
+
     /// Application Support/Applarchy (or "Applarchy DEV"): each build keeps its own
     /// backup and stills, so a DEV build can't restore or reset the released one's.
     private static var folder: URL {
@@ -43,7 +48,7 @@ enum LockScreen {
             files[uuid] = url.lastPathComponent
         }
         // WallpaperAgent records the new picture in its store asynchronously.
-        DispatchQueue.global().async {
+        storeQueue.async {
             for _ in 0..<40 {
                 if let s = try? Data(contentsOf: store), files.values.allSatisfy({ s.range(of: Data($0.utf8)) != nil }) { break }
                 Thread.sleep(forTimeInterval: 0.1)
@@ -64,7 +69,7 @@ enum LockScreen {
     /// Settings. nil when the store can't be read.
     static var isTakenOver: Bool? {
         guard let plist = loadStore() else { return nil }
-        return !desktopSlots(plist).contains { references($0.slot, stillMarker) }
+        return !slots(plist).contains { references($0.slot, stillMarker) }
     }
 
     /// How the store spells this build's stills: its URLs are percent-encoded ("Applarchy%20DEV").
@@ -74,22 +79,23 @@ enum LockScreen {
 
     // MARK: wallpaper store
 
-    private static func loadStore() -> NSMutableDictionary? {
+    static func loadStore() -> NSMutableDictionary? {
         guard let data = try? Data(contentsOf: store) else { return nil }
         return (try? PropertyListSerialization.propertyList(from: data, options: .mutableContainersAndLeaves, format: nil)) as? NSMutableDictionary
     }
 
-    private static func save(_ plist: NSMutableDictionary) {
+    static func save(_ plist: NSMutableDictionary) {
         guard let data = try? PropertyListSerialization.data(fromPropertyList: plist, format: .binary, options: 0) else { return }
         try? data.write(to: store, options: .atomic)
         Screensaver.run("/usr/bin/killall", ["WallpaperAgent"])   // relaunches and reads the store
     }
 
-    /// Every "Desktop" content dictionary in the store, with the display it belongs to (nil: all).
-    private static func desktopSlots(_ plist: NSMutableDictionary) -> [(display: String?, slot: NSMutableDictionary)] {
+    /// Every "Desktop" (or "Idle": the screensaver) content dictionary in the store, with
+    /// the display it belongs to (nil: all).
+    static func slots(_ plist: NSMutableDictionary, _ kind: String = "Desktop") -> [(display: String?, slot: NSMutableDictionary)] {
         var out: [(String?, NSMutableDictionary)] = []
         func add(_ entry: Any?, _ display: String?) {
-            if let d = (entry as? NSMutableDictionary)?["Desktop"] as? NSMutableDictionary { out.append((display, d)) }
+            if let d = (entry as? NSMutableDictionary)?[kind] as? NSMutableDictionary { out.append((display, d)) }
         }
         add(plist["SystemDefault"], nil)
         add(plist["AllSpacesAndDisplays"], nil)
@@ -110,14 +116,14 @@ enum LockScreen {
 
     private static func spreadToAllSpacesAndLockScreen(_ files: [String: String]) {
         guard let plist = loadStore() else { return }
-        let slots = desktopSlots(plist)
+        let desktops = slots(plist)
         // The entries macOS wrote for our stills, per display.
         var contents: [String: Any] = [:]
         for (uuid, file) in files {
-            if let s = slots.first(where: { references($0.slot, file) }) { contents[uuid] = s.slot["Content"] }
+            if let s = desktops.first(where: { references($0.slot, file) }) { contents[uuid] = s.slot["Content"] }
         }
         guard let main = NSScreen.main.flatMap(displayUUID).flatMap({ contents[$0] }) ?? contents.values.first else { return }
-        for (display, slot) in slots {
+        for (display, slot) in desktops {
             slot["Content"] = (display.flatMap { contents[$0] } ?? main) as AnyObject
             slot["LastSet"] = Date()
         }
@@ -128,7 +134,7 @@ enum LockScreen {
     private static func resetApplarchyEntries() {
         guard let plist = loadStore() else { return }
         var changed = false
-        for (_, slot) in desktopSlots(plist) where references(slot, stillMarker) {
+        for (_, slot) in slots(plist) where references(slot, stillMarker) {
             slot["Content"] = NSMutableDictionary(dictionary: [
                 "Choices": [["Provider": "default", "Files": [], "Configuration": Data()]],
                 "Shuffle": "$null", "EncodedOptionValues": "$null",

@@ -104,4 +104,85 @@ enum Screensaver {
     static func openSettings() {
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.ScreenSaver-Settings.extension")!)
     }
+
+    // MARK: choosing it
+
+    /// macOS 14 and later keep the chosen screensaver in the wallpaper store's "Idle" slots
+    /// (one per display and Space, all written when one is picked in System Settings);
+    /// macOS 13 in this domain's moduleDict, which also holds "Start when inactive".
+    private static let legacyDomain = "com.apple.screensaver" as CFString
+    private static let provider = "com.apple.wallpaper.choice.screen-saver"
+
+    /// Whether Applarchy is the screensaver macOS starts. nil when that can't be read.
+    static var isSelected: Bool? {
+        if let plist = LockScreen.loadStore() {
+            let idle = LockScreen.slots(plist, "Idle")
+            return !idle.isEmpty && idle.allSatisfy { chosenModule($0.slot)?.lastPathComponent == bundleName }
+        }
+        guard let module = legacyValue("moduleDict") as? [String: Any], let path = module["path"] as? String else { return nil }
+        return (path as NSString).lastPathComponent == bundleName
+    }
+
+    /// "Start Screen Saver when inactive" is set to Never.
+    static var neverStarts: Bool { (legacyValue("idleTime") as? Int) == 0 }
+
+    /// Make the installed Applarchy the screensaver on every display and Space, after
+    /// any lock screen change still being written, then call `done` on the main thread.
+    static func select(then done: @escaping () -> Void = {}) {
+        guard let installed, isSelected != true else { DispatchQueue.main.async(execute: done); return }
+        LockScreen.storeQueue.async {
+            if let plist = LockScreen.loadStore() {
+                // A choice made before goes everywhere one could be.
+                for key in ["SystemDefault", "AllSpacesAndDisplays"] {
+                    if let entry = plist[key] as? NSMutableDictionary, entry["Idle"] == nil { entry["Idle"] = NSMutableDictionary() }
+                }
+                // As System Settings writes it: the bundle's file URL, without a trailing slash.
+                let module = URL(fileURLWithPath: installed.path, isDirectory: false).absoluteString
+                let configuration = try? PropertyListSerialization.data(fromPropertyList: ["module": ["relative": module]], format: .binary, options: 0)
+                let options = try? PropertyListSerialization.data(fromPropertyList: ["values": [String: Any]()], format: .binary, options: 0)
+                for (_, slot) in LockScreen.slots(plist, "Idle") {
+                    slot["Content"] = NSMutableDictionary(dictionary: [
+                        "Choices": [["Provider": provider, "Files": [], "Configuration": configuration ?? Data()]],
+                        "Shuffle": "$null", "EncodedOptionValues": options ?? Data(),
+                    ])
+                    slot["LastSet"] = Date()
+                }
+                LockScreen.save(plist)
+            } else {
+                let module: [String: Any] = ["moduleName": (bundleName as NSString).deletingPathExtension, "path": installed.path, "type": 0]
+                CFPreferencesSetValue("moduleDict" as CFString, module as CFDictionary, legacyDomain, kCFPreferencesCurrentUser, kCFPreferencesCurrentHost)
+                CFPreferencesSynchronize(legacyDomain, kCFPreferencesCurrentUser, kCFPreferencesCurrentHost)
+            }
+            DispatchQueue.main.async(execute: done)
+        }
+    }
+
+    private static var installWatch: Timer?
+
+    /// After the installer was opened: once the copy with this config is in place (Install
+    /// clicked), choose it. Gives up after ten minutes, e.g. when the install was cancelled.
+    static func selectOnceInstalled(_ config: EffectConfig, then done: @escaping () -> Void) {
+        installWatch?.invalidate()
+        let deadline = Date().addingTimeInterval(600)
+        installWatch = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { timer in
+            if currentConfig == config { timer.invalidate(); select(then: done) }
+            else if Date() > deadline { timer.invalidate(); done() }
+        }
+    }
+
+    /// The screensaver a store slot names, if it names one.
+    private static func chosenModule(_ slot: NSDictionary) -> URL? {
+        guard let choice = ((slot["Content"] as? NSDictionary)?["Choices"] as? [NSDictionary])?.first,
+              choice["Provider"] as? String == provider,
+              let data = choice["Configuration"] as? Data,
+              let configuration = (try? PropertyListSerialization.propertyList(from: data, format: nil)) as? NSDictionary,
+              let relative = (configuration["module"] as? NSDictionary)?["relative"] as? String else { return nil }
+        return URL(string: relative)
+    }
+
+    /// System Settings writes these from another process, so read them fresh.
+    private static func legacyValue(_ key: String) -> Any? {
+        CFPreferencesSynchronize(legacyDomain, kCFPreferencesCurrentUser, kCFPreferencesCurrentHost)
+        return CFPreferencesCopyValue(key as CFString, legacyDomain, kCFPreferencesCurrentUser, kCFPreferencesCurrentHost)
+    }
 }
