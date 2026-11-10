@@ -17,6 +17,9 @@ final class FullScreenPreview {
     func show(_ config: EffectConfig) {
         guard windows.isEmpty, !config.effects.isEmpty else { return }
         shownAt = Date()
+        // Its own timeline: on the process's, the first effect would be whatever the
+        // wallpaper behind is in the middle of, not the selection.
+        let timeline = StudioEffectView.Timeline()
         for screen in NSScreen.screens {
             let window = KeyWindow(contentRect: screen.frame, styleMask: .borderless, backing: .buffered, defer: false, screen: screen)
             window.level = .screenSaver
@@ -37,6 +40,7 @@ final class FullScreenPreview {
             view.showsClock = config.showClock
             view.clockStyle = config.clockStyle
             view.holdSeconds = config.pauseSeconds
+            view.timeline = timeline
             view.followsScreensaverStop = false        // a real screensaver starting or stopping isn't ours
             window.contentView = view
             window.orderFrontRegardless()

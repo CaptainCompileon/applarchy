@@ -17,20 +17,24 @@ struct Theme: Identifiable, Equatable {
         var parts = command.split(separator: " ").map(String.init)
         guard let name = parts.first else { return command }
         parts.append(contentsOf: name == "synthgrid" ? ["--text-gradient-stops"] + stops : ["--final-gradient-stops"] + stops)
-        let a = accents.joined(separator: " ")
-        switch name {
-        case "beams": parts += ["--beam-gradient-stops", a]
-        case "matrix": parts += ["--rain-color-gradient", a]
-        case "thunderstorm": parts += ["--lightning-color", accents.last!, "--glowing-text-color", accents.first!]
-        case "rain": parts += ["--rain-colors", a]
-        case "fireworks": parts += ["--firework-colors", a]
-        case "bubbles": parts += ["--bubble-colors", a]
-        case "rings": parts += ["--ring-colors", a]
-        case "waves": parts += ["--wave-gradient-stops", a]
-        case "bouncyballs": parts += ["--ball-colors", a]
-        case "blackhole": parts += ["--star-colors", a]
-        case "synthgrid": parts += ["--grid-gradient-stops", a]
-        default: break
+        // Without accents (a custom theme from a hand-edited config) the effects keep their own
+        // colours: an option with no value wouldn't parse, and the effect wouldn't build.
+        if let first = accents.first, let last = accents.last {
+            let a = accents.joined(separator: " ")
+            switch name {
+            case "beams": parts += ["--beam-gradient-stops", a]
+            case "matrix": parts += ["--rain-color-gradient", a]
+            case "thunderstorm": parts += ["--lightning-color", last, "--glowing-text-color", first]
+            case "rain": parts += ["--rain-colors", a]
+            case "fireworks": parts += ["--firework-colors", a]
+            case "bubbles": parts += ["--bubble-colors", a]
+            case "rings": parts += ["--ring-colors", a]
+            case "waves": parts += ["--wave-gradient-stops", a]
+            case "bouncyballs": parts += ["--ball-colors", a]
+            case "blackhole": parts += ["--star-colors", a]
+            case "synthgrid": parts += ["--grid-gradient-stops", a]
+            default: break
+            }
         }
         return (["--terminal-background-color", String(format: "%06x", background)] + parts).joined(separator: " ")
     }
@@ -82,7 +86,9 @@ struct CustomTheme: Codable, Equatable {
     }
 
     var theme: Theme {
-        Theme(id: "custom", name: "Custom", background: UInt32(background, radix: 16) ?? 0,
-              foreground: UInt32(foreground, radix: 16) ?? 0xF0F0F0, stops: stops, accents: accents)
+        // Only "rrggbb" goes on to the engine: one colour it can't read and no effect would build.
+        func valid(_ colours: [String]) -> [String] { colours.filter { $0.utf8.count == 6 && $0.allSatisfy(\.isHexDigit) } }
+        return Theme(id: "custom", name: "Custom", background: UInt32(background, radix: 16) ?? 0,
+                     foreground: UInt32(foreground, radix: 16) ?? 0xF0F0F0, stops: valid(stops), accents: valid(accents))
     }
 }

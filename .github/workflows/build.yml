@@ -48,8 +48,9 @@ jobs:
       - name: Build
         run: scripts/package-dmg.sh
 
-      # Every effect in every theme through the engine, as the app builds them (tests/smoke).
-      - name: Smoke test
+      # Every effect in every theme through the engine, as the app builds them (tests/smoke),
+      # and the app's own logic that needs no screen (tests/unit).
+      - name: Tests
         run: scripts/test.sh
 
       - name: Check

@@ -58,7 +58,11 @@ struct CustomLogoEditor: View {
     @State private var tool = "draw"                 // "draw": the pixel grid; "text": the characters
     @State private var history: [String] = []        // for UNDO
     @State private var showingLibrary = false
+    /// Why a paste, or the logo as it is, was turned down; gone with the next edit.
+    @State private var note: String?
     private static let margin = 4
+    /// The limits imported logos have (LogoFile), for pasted and typed ones too.
+    private static let unusable = "TOO BIG FOR A LOGO: \(LogoFile.maxLines) LINES × \(LogoFile.maxColumns) COLUMNS OF PLAIN TEXT AT MOST"
 
     init(draft: Binding<EffectConfig>, isPresented: Binding<Bool>) {
         _draft = draft
@@ -108,8 +112,7 @@ struct CustomLogoEditor: View {
                 .foregroundStyle(.secondary).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
                 Button("CHOOSE PICTURE…") { choosePicture() }.buttonStyle(PixelButtonStyle())
-                Button("PASTE TEXT ART") { if let s = NSPasteboard.general.string(forType: .string) { image = nil; setText(s) } }
-                    .buttonStyle(PixelButtonStyle())
+                Button("PASTE TEXT ART") { paste() }.buttonStyle(PixelButtonStyle())
                 Button("BLANK") { image = nil; setText(""); tool = "draw" }.buttonStyle(PixelButtonStyle())
                 Spacer()
                 if image != nil {
@@ -157,10 +160,15 @@ struct CustomLogoEditor: View {
             }
             .frame(height: 400)
             .onChange(of: text) { new in                         // typed in TEXT: follow it on the grid
+                note = nil
                 if new != art.text { art = PixelArt(text: new).framed(margin: Self.margin) }
             }
             HStack(spacing: 10) {
-                Text("\(lines.count) LINES × \(lines.map(\.count).max() ?? 0) COLUMNS").foregroundStyle(.secondary)
+                if let note {
+                    Text(note).foregroundStyle(.orange)
+                } else {
+                    Text("\(lines.count) LINES × \(lines.map(\.count).max() ?? 0) COLUMNS").foregroundStyle(.secondary)
+                }
                 Spacer()
                 Button("CANCEL") { isPresented = false }.buttonStyle(PixelLinkStyle()).keyboardShortcut(.cancelAction)
                 Button { use() } label: {
@@ -211,6 +219,16 @@ struct CustomLogoEditor: View {
         art = PixelArt(text: new).framed(margin: Self.margin)
     }
 
+    /// Pasted text art, checked as an imported logo is: only text, of a size a screen can show
+    /// (and tidied: Windows line endings, trailing spaces, blank lines around it).
+    private func paste() {
+        guard let pasted = NSPasteboard.general.string(forType: .string), !pasted.allSatisfy(\.isWhitespace) else { return }
+        guard let art = LogoFile.clean(pasted) else { note = Self.unusable; return }
+        note = nil
+        image = nil
+        setText(art)
+    }
+
     private func remember() {
         history.append(text)
         if history.count > 100 { history.removeFirst() }
@@ -250,11 +268,8 @@ struct CustomLogoEditor: View {
     /// Confirmed: this is the logo, and it's kept in My logos.
     private func use() {
         // Trailing spaces and blank lines above and below go; a gap inside the drawing stays.
-        var rows = text.split(separator: "\n", omittingEmptySubsequences: false)
-            .map { String($0).replacingOccurrences(of: "\\s+$", with: "", options: .regularExpression) }
-        while rows.first?.isEmpty == true { rows.removeFirst() }
-        while rows.last?.isEmpty == true { rows.removeLast() }
-        let logo = rows.joined(separator: "\n") + "\n"
+        // Too big to show (typed or pasted into TEXT), it isn't taken.
+        guard let logo = LogoFile.clean(text) else { note = Self.unusable; return }
         draft.customLogo = logo
         draft.logo = "custom"
         library.save(logo)

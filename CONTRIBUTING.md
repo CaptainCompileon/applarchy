@@ -42,6 +42,10 @@ APPLARCHY_FLAVOR=release scripts/package-dmg.sh    # → dist/Applarchy-<version
 ## Test
 
 - `cd engine && cargo test --release`: the engine's unit tests.
+- `scripts/test.sh`: the smoke test (`tests/smoke`: every effect in every theme through the engine's
+  C API, as the app builds them) and the unit tests (`tests/unit`: Smooth Mode's handoff
+  arithmetic, the shared timeline, theme commands, saved settings, logo files, version comparison).
+  Logic that needs no screen belongs in `tests/unit`.
 - Pull requests run `.github/workflows/build.yml` (the universal DMG, as a downloadable artifact)
   and a dry run of the release (what merging would release as).
 - UI changes: render the window in both appearances with the snapshot hooks below and look at them.

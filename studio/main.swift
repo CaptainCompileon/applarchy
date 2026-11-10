@@ -106,9 +106,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         menu.addItem(.separator())
         let wp = Wallpaper.shared
         if let config = wp.config {
-            menu.addItem(withTitle: "Wallpaper: \(config.summary)", action: nil, keyEquivalent: "").isEnabled = false
+            // Smooth Mode is more than its wallpaper (the lock screen's picture, the screensaver),
+            // so it's named and turned off as a whole.
+            let status = SmoothMode.isOn ? "Smooth Mode: " + config.summary.replacingOccurrences(of: ", smooth", with: "")
+                                         : "Wallpaper: \(config.summary)"
+            menu.addItem(withTitle: status, action: nil, keyEquivalent: "").isEnabled = false
             menu.addItem(item(wp.paused ? "Resume Wallpaper" : "Pause Wallpaper", #selector(togglePause)))
-            menu.addItem(item("Turn Off Wallpaper", #selector(stopWallpaper)))
+            menu.addItem(item(SmoothMode.isOn ? "Turn Off Smooth Mode" : "Turn Off Wallpaper", #selector(stopWallpaper)))
         } else {
             menu.addItem(withTitle: "Wallpaper: Off", action: nil, keyEquivalent: "").isEnabled = false
         }
@@ -158,7 +162,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     @objc private func togglePause() { Wallpaper.shared.paused.toggle() }
     @objc private func stopWallpaper() {
-        Wallpaper.shared.stop()
+        // Smooth Mode: the previous desktop and lock-screen pictures come back too, as with
+        // the window's Turn Off; stopping only the wallpaper would leave the still in place.
+        if SmoothMode.isOn { SmoothMode.turnOff() } else { Wallpaper.shared.stop() }
         if window == nil { NSApp.terminate(nil) }
     }
 

@@ -263,7 +263,8 @@ release, to tell you about updates. Nothing about you or your Mac is sent.
 
 ## Uninstall
 
-1. In Applarchy's ⛈ menu, choose **Turn Off Wallpaper**, then **Quit Applarchy**.
+1. In Applarchy's ⛈ menu, choose **Turn Off Smooth Mode** (it puts your previous wallpaper and
+   lock screen back) or **Turn Off Wallpaper**, then **Quit Applarchy**.
 2. Delete **Applarchy** from Applications.
 3. Remove the screensaver: delete `Applarchy.saver` from `~/Library/Screen Savers` or, if you
    installed it for all users, `/Library/Screen Savers`.

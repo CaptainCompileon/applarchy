@@ -58,10 +58,14 @@ enum LockScreen {
         }
     }
 
+    /// Waits for any change still being written (an apply a moment ago): run ahead of it, that
+    /// apply would spread its stills over the store just restored, with the backup used up.
     static func restore() {
-        guard FileManager.default.fileExists(atPath: backup.path) else { resetApplarchyEntries(); return }
-        _ = try? FileManager.default.replaceItemAt(store, withItemAt: backup)
-        resetApplarchyEntries()          // e.g. a backup taken after an earlier, partial takeover
+        storeQueue.sync {
+            guard FileManager.default.fileExists(atPath: backup.path) else { resetApplarchyEntries(); return }
+            _ = try? FileManager.default.replaceItemAt(store, withItemAt: backup)
+            resetApplarchyEntries()          // e.g. a backup taken after an earlier, partial takeover
+        }
     }
 
     /// No Space or display shows this build's still any more: another Applarchy (DEV or
