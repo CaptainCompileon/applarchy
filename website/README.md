@@ -42,3 +42,12 @@ npx vercel --prod
   120 fps pace and the page draws only the latest frame, repainting only the cells that changed.
 - With Reduce Motion on, screens play only the calm effects (as the app does) and the page's
   own animations are off.
+
+## When the engine lets the page down
+
+- If the engine can't load (no WebAssembly, e.g. Lockdown Mode, or the file didn't arrive), every
+  screen draws its logo still, the captions say so, and the next time a screen wakes (scrolled back
+  to, the tab shown again, at least 5 s later) it asks for the engine again.
+- An effect that doesn't build, or traps while playing, is skipped for another one, as the app
+  does. In WebAssembly a panic aborts, so the engine's own guard can't catch it: `engine.ts` does.
+  After five in a row the screen shows the logo still until it next wakes.
