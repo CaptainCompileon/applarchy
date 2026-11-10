@@ -278,6 +278,20 @@ final class Wallpaper: NSObject, ObservableObject {
     }
 }
 
+/// Smooth Mode as a whole: the wallpaper, the lock screen's picture and the screensaver's
+/// setting. Turned off from the window or the menu bar, all three go together.
+enum SmoothMode {
+    static var isOn: Bool { Wallpaper.shared.config?.smoothTransition == true }
+
+    /// Off everywhere: the wallpaper stops, the desktop and lock-screen pictures from before
+    /// come back, and the screensaver no longer plays on for a desktop that won't pick it up.
+    static func turnOff() {
+        Wallpaper.shared.stop()
+        LockScreen.restore()
+        Screensaver.setSmooth(false)
+    }
+}
+
 /// Start at login (in the background) while a wallpaper is set, via a LaunchAgent.
 enum LoginItem {
     static let label = AppIdentity.id

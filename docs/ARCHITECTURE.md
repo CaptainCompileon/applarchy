@@ -31,7 +31,8 @@ studio/  (Swift)  the app (SwiftUI); compiles saver/ in as StudioEffectView for 
   screen plus the earlier instances macOS keeps alive in the screensaver host, plays the same effect
   with the same seed from the same moment. A view starting late catches up. A screen that finishes
   first holds the logo until all have; then the next effect starts everywhere together. Every effect
-  plays once, shuffled, before any repeats.
+  plays once, shuffled, before any repeats. The app's full-screen preview plays a timeline of its
+  own (`view.timeline`), so it starts on the selection, not on the wallpaper's current effect.
 - Frame rates: the screensaver runs at its display's refresh rate (capped at 120, 60 if unknown);
   the wallpaper at the picker's rate (Auto is the same rule); the preview at 30.
 

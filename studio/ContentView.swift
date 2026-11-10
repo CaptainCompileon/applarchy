@@ -214,7 +214,7 @@ struct ContentView: View {
                         .animation(.easeOut(duration: 0.15), value: previewHovered)
                 }
                 .layoutPriority(-1)
-            Text((focused.map { id in "Previewing \(Catalog.effects.first { $0.id == id }!.title) — click it again to preview your selection" }
+            Text((focused.map { id in "Previewing \(Catalog.effects.first { $0.id == id }?.title ?? id) — click it again to preview your selection" }
                  ?? (draft.effects.count == 1 ? "Previewing your selection" : "Previewing your selection in random order"))
                  + " · click the preview for full screen")
                 .foregroundStyle(.secondary)
@@ -430,9 +430,7 @@ struct ContentView: View {
     }
 
     private func turnOffSmooth() {
-        wallpaper.stop()
-        LockScreen.restore()
-        Screensaver.setSmooth(false)
+        SmoothMode.turnOff()
         message = "Smooth mode is off. Your previous wallpaper and lock screen are back."
         refresh()
     }
