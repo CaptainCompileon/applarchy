@@ -176,6 +176,39 @@ do {
     expect(!Updates.isNewer("2.2", than: "2.2") && !Updates.isNewer("2.2.0", than: "2.2") && !Updates.isNewer("2.1.9", than: "2.2"), "the same or older isn't newer")
     let notes = "## What's Changed\n* Smooth Mode by @someone in https://github.com/o/r/pull/12\n- Fixed by hand\n\n**Full Changelog**: https://github.com/o/r/compare/v1...v2"
     expect(Updates.items(notes) == ["Smooth Mode", "Fixed by hand"], "the release notes' pull request titles")
+
+    // GitHub's list of releases → the newest one newer than the installed, and its disk image.
+    let digest = String(repeating: "ab", count: 32)
+    func dmg(_ version: String, digest: String? = "sha256:" + digest, host: String = "github.com") -> [String: Any] {
+        var file: [String: Any] = ["name": "Applarchy-\(version).dmg", "size": 1234,
+                                   "browser_download_url": "https://\(host)/CaptainCompileon/applarchy/releases/download/v\(version)/Applarchy-\(version).dmg"]
+        if let digest { file["digest"] = digest }
+        return file
+    }
+    func release(_ version: String, _ assets: [[String: Any]], draft: Bool = false, prerelease: Bool = false) -> [String: Any] {
+        ["tag_name": "v" + version, "html_url": "https://github.com/CaptainCompileon/applarchy/releases/tag/v" + version,
+         "body": "* Change in \(version) by @x in https://github.com/o/r/pull/1", "draft": draft, "prerelease": prerelease, "assets": assets]
+    }
+    let list = [release("2.8", [dmg("2.8")]), release("3.0", [dmg("3.0")], draft: true), release("2.10", [["name": "notes.txt"], dmg("2.10")]),
+                release("2.9", [dmg("2.9")]), release("2.7", [dmg("2.7")]), release("4.0", [dmg("4.0")], prerelease: true)]
+    let newest = Updates.release(in: list, newerThan: "2.8")
+    expect(newest?.version == "2.10", "the newest published release, drafts and prereleases aside")
+    expect(newest?.changes.map(\.version) == ["2.10", "2.9"], "with the changes of every release since the installed one")
+    expect(newest?.asset == Updates.Asset(url: URL(string: "https://github.com/CaptainCompileon/applarchy/releases/download/v2.10/Applarchy-2.10.dmg")!,
+                                          size: 1234, sha256: digest), "and its disk image, among its other files")
+    expect(Updates.release(in: list, newerThan: "2.10") == nil, "nothing newer: no release")
+
+    // A release Applarchy may install by itself needs a checksum and a trusted address.
+    expect(Updates.asset(in: release("2.9", [dmg("2.9", digest: nil)])) == nil, "no checksum: only offered as a download")
+    expect(Updates.asset(in: release("2.9", [dmg("2.9", digest: "md5:abcd")])) == nil, "another kind of checksum doesn't count")
+    expect(Updates.asset(in: release("2.9", [dmg("2.9", digest: "sha256:tooshort")])) == nil, "nor a malformed one")
+    expect(Updates.asset(in: release("2.9", [dmg("2.9", host: "example.com")])) == nil, "a file hosted elsewhere isn't installed")
+    expect(Updates.asset(in: release("2.9", [])) == nil, "no disk image")
+    expect(Updates.isTrustedDownload(URL(string: "https://github.com/CaptainCompileon/applarchy/releases/download/v2.9/Applarchy-2.9.dmg")!), "this repository's release files")
+    expect(!Updates.isTrustedDownload(URL(string: "http://github.com/CaptainCompileon/applarchy/releases/download/v2.9/Applarchy-2.9.dmg")!), "not over plain HTTP")
+    expect(!Updates.isTrustedDownload(URL(string: "https://github.com/someone/else/releases/download/v2.9/Applarchy-2.9.dmg")!), "not another repository's")
+    expect(!Updates.isTrustedDownload(URL(string: "https://github.com.evil.example/CaptainCompileon/applarchy/releases/download/v2.9/a.dmg")!), "not a look-alike host")
+    expect(Updates.sha256(Data("abc".utf8)) == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", "SHA-256, as GitHub writes it")
 }
 
 if failures.isEmpty {

@@ -69,6 +69,25 @@ studio/  (Swift)  the app (SwiftUI); compiles saver/ in as StudioEffectView for 
   (`~/Library/Application Support/com.apple.wallpaper/Store/Index.plist`) and restarts
   `WallpaperAgent`. The store is backed up first; Turn Off restores it.
 
+## Updates
+
+- `Updates` asks GitHub's releases API (launch, daily, on activation after a few hours, on demand)
+  and publishes the newest release newer than the installed one, with its DMG (`Asset`: address,
+  size, SHA-256) when it has one at a trusted address.
+- `AutoUpdate` stages it when Update is clicked, or by itself with `autoUpdate` on: download, check
+  the size and SHA-256, mount the DMG, check the app inside (bundle ID, version, newer than the
+  installed one, `codesign --verify --deep --strict`), copy it to the Update folder and check again.
+- Nothing is replaced while the app runs. At launch, after the one-instance check and before any
+  UI (`installStagedAtLaunch`), or on Restart Now: the running bundle is moved aside, the staged one
+  moved into its place and opened with `--updated-from <pid>` (plus `--background` if this copy had
+  it), and this copy exits. The new copy waits for that pid before its own one-instance check. Any
+  failure moves the old bundle back; a version macOS refuses is remembered (`autoUpdateBlocked`) and
+  offered as a download instead.
+- At every launch `Screensaver.refreshIfOutdated` replaces an installed screensaver of another
+  version with the app's, keeping its `config.json`, where that works in place.
+- Dev builds don't check for updates; `APPLARCHY_PRETEND_VERSION` and `APPLARCHY_UPDATE_DMG`
+  (CONTRIBUTING's debugging hooks) try the whole path on one.
+
 ## Settings and storage
 
 | What | Where | Notes |
@@ -80,6 +99,8 @@ studio/  (Swift)  the app (SwiftUI); compiles saver/ in as StudioEffectView for 
 | Screensaver | `<name>.saver/Contents/Resources/config.json` | read on every start; the app rewrites it in place and re-signs |
 | Login item | `~/Library/LaunchAgents/<app id>.plist` | `--background`, only while a wallpaper is set |
 | Lock screen | `~/Library/Application Support/<app name>/` | the wallpaper-store backup and the stills |
+| Automatic updates | `UserDefaults` `autoUpdate`, `autoUpdateAsked` | off until turned on; the question is asked once |
+| Staged update | `~/Library/Application Support/<app name>/Update/` | the next version's app, until the next start installs it |
 
 `config.json` keys are `EffectConfig`'s fields: `effects`, `logo` (`apple-small`, `apple` or
 `custom`), `showClock`, `theme`, `hourCycle` (`auto`, `12` or `24`), `showDate`, `clockLarge`,

@@ -4,6 +4,9 @@ import ScreenSaver
 struct ContentView: View {
     @EnvironmentObject private var wallpaper: Wallpaper
     @ObservedObject private var updates = Updates.shared
+    @ObservedObject private var autoUpdate = AutoUpdate.shared
+    /// The one-time question: update automatically?
+    @State private var askingAutoUpdate = false
     @State private var editingLogo = false
     @State private var showingLogoLibrary = false
     @State private var editingTheme = false
@@ -29,6 +32,8 @@ struct ContentView: View {
         _draft = State(initialValue: snapshot?.draft ?? Store.draft)
         _focused = State(initialValue: snapshot?.focused)
         _showTutorial = State(initialValue: snapshot?.tutorial ?? false)
+        _message = State(initialValue: snapshot == nil ? AutoUpdate.takeUpdatedNote() : nil)
+        _askingAutoUpdate = State(initialValue: snapshot != nil && ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT_AUTOUPDATE"] != nil)
         _editingLogo = State(initialValue: snapshot != nil && ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT_EDITOR"] != nil)
         _showingLogoLibrary = State(initialValue: snapshot != nil && ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT_LIBRARY"] != nil)
         _editingTheme = State(initialValue: snapshot != nil && ProcessInfo.processInfo.environment["OMARCHY_SNAPSHOT_THEME_EDITOR"] != nil)
@@ -78,9 +83,20 @@ struct ContentView: View {
                 TutorialOverlay(isPresented: $showTutorial)
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
                     .zIndex(1)
-            } else if let release = updates.prompt {
+            } else if askingAutoUpdate {
+                AutoUpdateQuestion { on in
+                    withAnimation(.easeOut(duration: 0.15)) {
+                        autoUpdate.asked = true
+                        autoUpdate.enabled = on
+                        askingAutoUpdate = false
+                    }
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                .zIndex(1)
+            } else if let release = updates.prompt, !autoUpdate.handlesQuietly(release) {
                 UpdatePrompt(release: release, installed: updates.current,
-                             download: { withAnimation(.easeOut(duration: 0.15)) { updates.download() } },
+                             canInstall: autoUpdate.canInstall(release), automatic: autoUpdate.enabled,
+                             update: { automatic in withAnimation(.easeOut(duration: 0.15)) { update(to: release, automatic: automatic) } },
                              later: { withAnimation(.easeOut(duration: 0.15)) { updates.dismiss() } })
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
                     .zIndex(1)
@@ -91,7 +107,11 @@ struct ContentView: View {
         .font(Pixel.body)
         .tint(.ink)
         .noFocusRing()
-        .onAppear { if !tutorialSeen && !snapshotMode { withAnimation(.easeOut(duration: 0.3).delay(0.35)) { showTutorial = true } } }
+        .onAppear {
+            guard !snapshotMode else { return }
+            if !tutorialSeen { withAnimation(.easeOut(duration: 0.3).delay(0.35)) { showTutorial = true } }
+            else if autoUpdate.shouldAsk { withAnimation(.easeOut(duration: 0.3).delay(0.35)) { askingAutoUpdate = true } }   // not on top of the first-run tour
+        }
         .onChange(of: showTutorial) { if !$0 && !snapshotMode { tutorialSeen = true } }
         .onReceive(NotificationCenter.default.publisher(for: .showTutorial)) { _ in withAnimation(.easeOut(duration: 0.25)) { showTutorial = true } }
         .onChange(of: draft) { if !snapshotMode { Store.draft = $0 } }
@@ -281,12 +301,42 @@ struct ContentView: View {
                     }
                 }
             }
-            if let update = updates.available {
-                statusRow(title: "Update", value: "Applarchy \(update.version) is available") {
+            if let release = updates.available { updateRow(release) }
+        }
+    }
+
+    /// The newer release, and where its update stands: on offer, downloading, ready for the
+    /// next start, or failed (then a download by hand).
+    @ViewBuilder private func updateRow(_ release: Updates.Release) -> some View {
+        switch autoUpdate.stage {
+        case .downloading(let version, let fraction):
+            statusRow(title: "Update", value: "Downloading Applarchy \(version)… \(Int(fraction * 100))%") {}
+        case .ready(let version):
+            statusRow(title: "Update", value: "Applarchy \(version) is ready: it takes over at the next start") {
+                Button("Restart Now") { autoUpdate.restartToUpdate() }.buttonStyle(PixelButtonStyle(prominent: true))
+            }
+        case .failed(let version, let reason):
+            statusRow(title: "Update", value: "Applarchy \(version): \(reason)") {
+                Button("Download…") { updates.download() }.buttonStyle(PixelButtonStyle(prominent: true))
+            }
+        case .idle:
+            statusRow(title: "Update", value: "Applarchy \(release.version) is available") {
+                if autoUpdate.canInstall(release) {
+                    Button("Update") { update(to: release, automatic: autoUpdate.enabled) }.buttonStyle(PixelButtonStyle(prominent: true))
+                } else {
                     Button("Download…") { updates.download() }.buttonStyle(PixelButtonStyle(prominent: true))
                 }
             }
         }
+    }
+
+    /// Update was clicked: download and stage `release` now (or, where this copy can't be
+    /// replaced, open its page), and keep doing so for later releases if `automatic`.
+    private func update(to release: Updates.Release, automatic: Bool) {
+        autoUpdate.asked = true                    // the prompt's tick was the question
+        autoUpdate.enabled = automatic
+        autoUpdate.update(to: release, byUser: true)
+        updates.dismiss()
     }
 
     private var wallpaperStatus: String {

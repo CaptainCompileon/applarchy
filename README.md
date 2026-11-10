@@ -48,7 +48,9 @@ real macOS screensaver and as a live desktop wallpaper, with the effect engine c
 - **Smooth or easy on the battery** — the wallpaper runs at 120, 60, 30 or 15 fps, or **Auto**:
   each display's own refresh rate (up to 120), and can pause on battery power or in Low Power Mode.
 - **Reduce Motion aware** — with macOS's Reduce Motion on, only the calm effects play.
-- **Update notices** — a note in the app and the menu bar when a new version is out.
+- **Updates** — a note in the app and the menu bar when a new version is out; **Update** installs
+  it, and with **Update Automatically** on, new versions download in the background and take over
+  the next time Applarchy starts.
 - **Universal** — runs natively on Apple Silicon and Intel Macs.
 - **Live preview** of any effect, a quick first-run tour, and a pixel menu bar item to pause or stop
   the wallpaper.
@@ -120,6 +122,21 @@ curl -fsSL https://raw.githubusercontent.com/CaptainCompileon/applarchy/main/scr
 
 **Requirements:** macOS 13 Ventura or later, on Apple Silicon or Intel.
 
+### Updating
+
+When a new version is out, Applarchy says so in its window and the menu bar. **Update** downloads it
+in the background; it takes over the next time Applarchy starts, or right away with **Restart Now**.
+Tick **Update automatically from now on** there (Applarchy also asks once), and later versions
+arrive the same way without asking; **Update Automatically** in the Applarchy menu turns it on or off.
+The installed screensaver is brought up to the new version when the updated app starts.
+
+Before a download is installed, Applarchy checks that it is this repository's release file from
+github.com, that it matches the SHA-256 GitHub publishes for it, and that the app inside is Applarchy
+at the announced version with its code signature intact. Applarchy isn't signed with an Apple
+Developer ID, so this is the same trust as downloading the DMG by hand, not a publisher's signature.
+A copy that macOS runs from the DMG or straight from Downloads can't replace itself: there, and if
+macOS refuses the change, the button is **Download…** and opens the release's page.
+
 ## Usage
 
 1. **Pick effects** — tick the ones you like. Click an effect's name to preview just that one.
@@ -161,8 +178,9 @@ when you or a power setting paused it. In Smooth Mode the desktop still finishes
 
 **Smooth Mode: the desktop only shows the logo.** If the screensaver had finished its effect (it was
 showing the logo), the desktop glides the logo to the middle and holds it; that's expected. If it
-never carries an animation on, click **Update Smooth Mode** after updating Applarchy, so the
-installed screensaver matches the app.
+never carries an animation on, the installed screensaver may be an older version than the app:
+Applarchy brings it up to date when it starts, where it can do so without the installer; otherwise
+click **Update Smooth Mode**.
 
 **The screen goes dark soon after locking.** macOS turns the display off on the lock screen after a
 short while, whatever the screensaver does; Applarchy can't keep it on.
@@ -260,7 +278,8 @@ from the screensaver to the desktop.
 
 Applarchy makes one kind of network request: when it starts, and about once a day after that, it
 asks GitHub's public API for the latest release, to tell you about updates (Check for Updates…
-asks at once). Nothing about you or your Mac is sent.
+asks at once). **Update**, or **Update Automatically** if you turn it on, also downloads that
+release's DMG from GitHub. Nothing about you or your Mac is sent.
 
 ## Uninstall
 

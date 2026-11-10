@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Applarchy: pick Omarchy's ttfx effects and use them as the screensaver or as a
 /// live wallpaper. Runs as a menu bar app while a wallpaper is set.
-final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMenuDelegate, NSMenuItemValidation {
     private var window: NSWindow?
     private var statusItem: NSStatusItem!
     private var updateBadge: AnyCancellable?
@@ -25,6 +25,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         } else if ProcessInfo.processInfo.environment["APPLARCHY_PRETEND_VERSION"] != nil {
             Updates.shared.start()       // trying the update notices on a dev build
         }
+        AutoUpdate.shared.start()
+        // After an update (this app's own, or one by hand) the installed screensaver is still
+        // the old version's: bring it along, where that needs no installer.
+        DispatchQueue.global(qos: .utility).async { Screensaver.refreshIfOutdated() }
         Wallpaper.shared.restore()
         buildMainMenu()
         buildStatusItem()
@@ -72,6 +76,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
         appMenu.addItem(item("Check for Updates…", #selector(checkForUpdates)))
+        if AutoUpdate.shared.isOffered { appMenu.addItem(item("Update Automatically", #selector(toggleAutoUpdate))) }
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Quit \(AppIdentity.name)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
@@ -118,9 +123,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         }
         menu.addItem(.separator())
         if let update = Updates.shared.available {
-            menu.addItem(item("Update Available: Applarchy \(update.version)…", #selector(openUpdate)))
+            if case .ready(let version) = AutoUpdate.shared.stage {
+                menu.addItem(item("Restart to Update to Applarchy \(version)", #selector(restartToUpdate)))
+            } else {
+                menu.addItem(item("Update Available: Applarchy \(update.version)…", #selector(openUpdate)))
+            }
         }
         menu.addItem(item("Check for Updates…", #selector(checkForUpdates)))
+        if AutoUpdate.shared.isOffered {
+            let automatic = item("Update Automatically", #selector(toggleAutoUpdate))
+            automatic.state = AutoUpdate.shared.enabled ? .on : .off
+            menu.addItem(automatic)
+        }
         menu.addItem(.separator())
         menu.addItem(item("Quit \(AppIdentity.name)", #selector(NSApplication.terminate(_:)), target: NSApp))
     }
@@ -136,7 +150,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         DispatchQueue.main.async { NotificationCenter.default.post(name: .showTutorial, object: nil) }
     }
 
-    @objc private func openUpdate() { Updates.shared.download() }
+    /// The update prompt, in the window (or, with automatic updates on, its status line).
+    @objc private func openUpdate() {
+        Updates.shared.showPrompt()
+        showWindow()
+    }
+
+    @objc private func restartToUpdate() { AutoUpdate.shared.restartToUpdate() }
+
+    @objc private func toggleAutoUpdate() {
+        AutoUpdate.shared.enabled.toggle()
+        AutoUpdate.shared.asked = true           // answered here: no need for the question
+    }
+
+    /// The main menu's Update Automatically shows its tick (the menu bar's is rebuilt each time).
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        if item.action == #selector(toggleAutoUpdate) { item.state = AutoUpdate.shared.enabled ? .on : .off }
+        return true
+    }
 
     /// Check now and say how it went: the update prompt if there's one, else a short alert.
     @objc private func checkForUpdates() {
@@ -257,6 +288,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
 }
 
+// Started by an update: the copy it replaced is quitting.
+AutoUpdate.waitForPredecessor()
+
 // One instance: a second launch asks the running one to show its window.
 let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
     .filter { $0.processIdentifier != getpid() }
@@ -265,6 +299,11 @@ if !others.isEmpty && !CommandLine.arguments.contains("--snapshot") && !CommandL
         DistributedNotificationCenter.default().postNotificationName(.init(AppIdentity.id + ".show"), object: nil, userInfo: nil, deliverImmediately: true)
     }
     exit(0)
+}
+
+// An update downloaded earlier takes over now: this copy installs it, starts it and quits.
+if !CommandLine.arguments.contains("--snapshot") && !CommandLine.arguments.contains("--window-snapshot") {
+    AutoUpdate.installStagedAtLaunch()
 }
 
 Pixel.register()
