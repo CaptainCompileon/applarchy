@@ -64,6 +64,7 @@ b { font-weight: 400; color: var(--ink); }
 
 .skip { position: absolute; left: -999px; top: 8px; background: var(--ink); color: var(--paper); padding: 6px 12px; z-index: 100; }
 .skip:focus { left: 8px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .wrap { max-width: calc(var(--page) + 2 * var(--gutter)); margin: 0 auto; padding: 0 var(--gutter); }
 
@@ -108,6 +109,7 @@ b { font-weight: 400; color: var(--ink); }
 }
 .big-btn:hover { background: var(--ink); color: var(--paper); box-shadow: var(--sh) var(--sh) 0 var(--shadow-hi); }
 .big-btn:active { transform: translate(var(--sh), var(--sh)); box-shadow: 0 0 0 transparent; }
+.big-btn[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
 .big-btn-icon { width: 30px; height: 30px; flex: none; fill: currentColor; }
 .big-btn-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
 .big-btn-title { font-size: var(--f16); line-height: 1.2; letter-spacing: 0.04em; }
@@ -217,6 +219,7 @@ b { font-weight: 400; color: var(--ink); }
 
 .screen-caption { display: flex; align-items: center; gap: 16px; margin-top: 18px; font-size: var(--f11); color: var(--muted); flex-wrap: wrap; }
 .caption-hint { margin-left: auto; color: var(--faint); }
+.no-fullscreen .fs-hint { display: none; }
 .live { display: inline-flex; align-items: center; gap: 7px; border: 1.5px solid var(--line-2); padding: 3px 8px; color: var(--ink); font-size: var(--f11); letter-spacing: 0.06em; line-height: 1.2; }
 .live i { width: 7px; height: 7px; background: #ff4f6d; animation: blink 1.4s steps(2, jump-none) infinite; }
 @keyframes blink { 50% { opacity: 0.15; } }
@@ -297,6 +300,7 @@ b { font-weight: 400; color: var(--ink); }
 .theme-name { font-size: var(--f11); color: var(--muted); white-space: nowrap; }
 
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 10px; padding-top: 22px; border-top: 1px solid var(--line); }
+.app-none { font-size: var(--f11); margin-top: 12px; }
 
 /* ---------- III. themes ---------- */
 
@@ -321,6 +325,7 @@ b { font-weight: 400; color: var(--ink); }
 }
 .pad-grid i { aspect-ratio: 1; background: #000; display: block; }
 .pad-grid i.on { background: #fff; }
+.pad-grid i.cursor { outline: 2px solid var(--accent); outline-offset: 0; position: relative; z-index: 1; }
 .pad-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .pad-size { font-size: var(--f11); margin-left: auto; }
 .pad-side { display: grid; gap: 12px; }

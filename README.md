@@ -258,8 +258,9 @@ from the screensaver to the desktop.
 
 ## Privacy
 
-Applarchy makes one network request: once a day it asks GitHub's public API for the latest
-release, to tell you about updates. Nothing about you or your Mac is sent.
+Applarchy makes one kind of network request: when it starts, and about once a day after that, it
+asks GitHub's public API for the latest release, to tell you about updates (Check for Updates…
+asks at once). Nothing about you or your Mac is sent.
 
 ## Uninstall
 

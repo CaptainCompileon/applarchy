@@ -92,9 +92,19 @@ export class Screen {
     new ResizeObserver(() => this.layout()).observe(host)
     new IntersectionObserver(([e]) => { this.visible = e.isIntersecting; this.wake() }, { rootMargin: '120px' }).observe(host)
     document.addEventListener('visibilitychange', () => this.wake())
-    if (this.opts.fullscreen) {
+    // Not where an element can't go full screen (iPhone): the click would do nothing.
+    if (this.opts.fullscreen && typeof host.requestFullscreen === 'function') {
       host.addEventListener('click', () => this.toggleFullscreen())
       host.title = 'Click for full screen'
+      // By keyboard too: to assistive technology it's a button that shows a picture.
+      host.tabIndex = 0
+      host.setAttribute('role', 'button')
+      host.setAttribute('aria-label', `${(host.getAttribute('aria-label') ?? 'Live demo').replace(/\.?$/, '.')} Press Enter for full screen.`)
+      host.addEventListener('keydown', e => {
+        if (e.key !== 'Enter' && e.key !== ' ') return
+        e.preventDefault()
+        this.toggleFullscreen()
+      })
     }
   }
 
@@ -154,6 +164,7 @@ export class Screen {
   restart() {
     this.effect?.free()
     this.effect = null
+    this.failures = 0
     cancelAnimationFrame(this.raf)
     clearTimeout(this.holdTimer)
     this.raf = this.holdTimer = 0
@@ -202,6 +213,7 @@ export class Screen {
     ctx.fillStyle = '#' + this.opts.theme.background
     ctx.fillRect(0, 0, W, H)
     this.drawClock()
+    if (this.fallback) this.drawFallback()
     if (resized && this.started) this.restart()
   }
 
@@ -301,14 +313,61 @@ export class Screen {
     }
     if (this.raf || this.holdTimer) return
     if (!this.engine) {
-      loadEngine().then(e => { this.engine = e; this.wake() })
+      if (this.awaitingEngine) return
+      this.awaitingEngine = true
+      // Without it the logo is shown as it is; the next wake (scrolled back to, the tab
+      // shown again) asks for the engine again.
+      loadEngine().then(
+        e => { this.awaitingEngine = false; this.engine = e; this.wake() },
+        () => { this.awaitingEngine = false; this.drawFallback() })
       return
     }
     this.started = true
+    if (!this.W) return                                            // not laid out yet: layout() restarts it
     if (!this.effect && !this.armed) return this.drawStill()
     if (!this.effect) this.startNext()
     else this.t0 = performance.now() - this.effect.frames / 0.12   // carry on where it paused
+    if (!this.effect) return this.skipFailed()                     // it didn't build
     this.raf = requestAnimationFrame(this.tick)
+  }
+
+  // MARK: when the engine lets it down
+
+  private awaitingEngine = false
+  /** Effects in a row that didn't build or broke while playing. */
+  private failures = 0
+  /** The logo is drawn without the engine (drawFallback). */
+  private fallback = false
+
+  /** An effect that didn't build, or broke while playing: on to another one, as the app
+   *  does. After a few in a row the logo is shown as it is, until the next wake or restart. */
+  private skipFailed() {
+    this.effect?.free()
+    this.effect = null
+    if (++this.failures >= 5) return this.drawFallback()
+    this.holdTimer = window.setTimeout(() => { this.holdTimer = 0; this.wake() }, 250)
+  }
+
+  /** The logo itself, still, where the effects would leave it: what's shown when the
+   *  engine didn't load or its effects keep failing, instead of an empty box. */
+  private drawFallback() {
+    this.fallback = true
+    if (!this.W) return                                            // layout() draws it once there's a size
+    const lines = this.opts.logo.replace(/\n$/, '').split('\n').map(line => [...line])
+    const top = this.logoLayout().topRow
+    const left = Math.max(0, Math.floor((this.cols - Math.max(...lines.map(line => line.length))) / 2))
+    const stops = this.opts.theme.stops
+    const colour = stops.length ? parseInt(stops[stops.length - 1], 16) : DEFAULT_FG
+    this.scalar.fill(32)
+    this.fg.fill(DEFAULT_FG)
+    this.bg.fill(NONE)
+    lines.forEach((line, r) => line.forEach((ch, c) => {
+      const row = top + r, col = left + c
+      if (row < 0 || row >= this.rows || col >= this.cols) return
+      this.scalar[row * this.cols + col] = ch.codePointAt(0)!
+      this.fg[row * this.cols + col] = colour
+    }))
+    this.draw()
   }
 
   /** The settled logo, without the animation: an effect run to its end in one go. */
@@ -316,14 +375,14 @@ export class Screen {
     if (this.still || !this.engine || !this.W) return
     this.still = true
     const effect = this.engine.effect(this.opts.logo, this.cols, this.rows + this.extra, themedCommand('print', this.opts.theme))
-    if (!effect) return
+    if (!effect) return this.drawFallback()
     const t = performance.now()
     let frame: Uint8Array | null, any = false
     while ((frame = effect.advance(256))) { this.parse(frame); any = true }
     stats.engineMs += performance.now() - t
     stats.frames += effect.frames
     stats.effects++
-    if (any) this.draw()
+    if (any && !effect.failed) { this.fallback = false; this.draw() } else this.drawFallback()
     effect.free()
   }
 
@@ -355,6 +414,8 @@ export class Screen {
     this.effect?.free()
     this.effect = this.engine.effect(this.opts.logo, this.cols, this.rows + this.extra, themedCommand(name, this.opts.theme))
     stats.engineMs += performance.now() - t
+    if (!this.effect) return                                       // wake() moves on to another
+    this.fallback = false
     this.effectName = name
     this.t0 = performance.now()
     stats.effects++
@@ -382,7 +443,9 @@ export class Screen {
         stats.draws++
       }
     }
+    if (effect.failed) return this.skipFailed()
     if (effect.done) {
+      this.failures = 0
       // Hold the settled logo for the pause, then the next effect.
       this.holdTimer = window.setTimeout(() => {
         this.holdTimer = 0

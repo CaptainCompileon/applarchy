@@ -114,8 +114,8 @@
         </div>
         <figcaption class="screen-caption">
           <span class="live"><i aria-hidden="true"></i>LIVE</span>
-          <span class="now-playing" id="hero-now" aria-live="polite">Loading the engine…</span>
-          <span class="caption-hint">The real engine, compiled to WebAssembly · click for full screen</span>
+          <span class="now-playing" id="hero-now">Loading the engine…</span>
+          <span class="caption-hint">The real engine, compiled to WebAssembly<span class="fs-hint"> · click for full screen</span></span>
         </figcaption>
       </figure>
     </section>
@@ -173,7 +173,7 @@
 
           <div class="app-main">
             <div class="screen-host app-preview" id="app-screen" role="img" aria-label="Preview of the selected effects"></div>
-            <p class="app-status" id="app-status" aria-live="polite">Previewing your selection</p>
+            <p class="app-status" id="app-status">Previewing your selection</p>
 
             <div class="controls">
               <div class="row">
@@ -219,7 +219,9 @@
                 <div class="seg seg-sm" role="radiogroup" aria-labelledby="lbl-pause" id="pause-seg">
                   <button type="button" role="radio" aria-checked="false" data-pause="1000">1 S</button>
                   <button type="button" role="radio" aria-checked="true" data-pause="3000">3 S</button>
+                  <button type="button" role="radio" aria-checked="false" data-pause="5000">5 S</button>
                   <button type="button" role="radio" aria-checked="false" data-pause="10000">10 S</button>
+                  <button type="button" role="radio" aria-checked="false" data-pause="30000">30 S</button>
                 </div>
               </div>
             </div>
@@ -236,6 +238,7 @@
                 <span class="big-btn-arrow" aria-hidden="true">▶</span>
               </a>
             </div>
+            <p class="app-none muted" id="app-none" hidden>Select at least one effect.</p>
           </div>
         </div>
       </div>
@@ -257,11 +260,11 @@
       <h3 class="sub-title reveal" id="logo-pad"><span class="sub-num">ii)</span> YOUR OWN LOGO</h3>
       <div class="prose reveal">
         <p>Choose your vibe: <em>Chill Guy</em>, or your own logo from any picture, pasted text art or a blank canvas, touched up square by square. Every effect animates it. Logos you use are kept in My Logos, to export and share.</p>
-        <p class="muted">Draw here: click or drag to fill squares, start on a filled one or right-click to erase.</p>
+        <p class="muted">Draw here: click or drag to fill squares, start on a filled one or right-click to erase. By keyboard: arrow keys, then Space.</p>
       </div>
       <div class="pad reveal">
         <div class="pad-editor">
-          <div class="pad-grid" id="pad-grid" role="grid" aria-label="Logo drawing grid"></div>
+          <div class="pad-grid" id="pad-grid" role="application" aria-label="Logo drawing grid. Arrow keys move, Space fills or erases a square."></div>
           <div class="pad-tools">
             <button class="btn btn-sm" type="button" id="pad-clear">CLEAR</button>
             <button class="btn btn-sm" type="button" id="pad-reset">STORM</button>
@@ -340,7 +343,7 @@
           </div>
           <p class="muted">Auto matches each display's refresh rate, up to 120 fps. Frame rate and battery options apply instantly.</p>
           <div class="opt">
-            <span class="check check-static"><span class="box on" aria-hidden="true"></span>Pause on battery</span>
+            <span class="check check-static"><span class="box" aria-hidden="true"></span>Pause on battery</span>
             <span class="check check-static"><span class="box on" aria-hidden="true"></span>Pause in Low Power Mode</span>
           </div>
         </div>
@@ -382,7 +385,7 @@
       <h2 class="ch-title"><span class="ch-num">VI.</span> <span data-scramble>THE TERMS</span></h2>
       <div class="prose reveal">
         <p>Free and open source under the MIT licence. No account, no subscription, no analytics.</p>
-        <p>Applarchy makes one network request: once a day it asks GitHub's public API for the latest release, to tell you about updates. Nothing about you or your Mac is sent.</p>
+        <p>Applarchy makes one kind of network request: when it starts, and about once a day after that, it asks GitHub's public API for the latest release, to tell you about updates. Nothing about you or your Mac is sent.</p>
         <p>It isn't signed with an Apple Developer ID yet, so the first launch needs one extra click in System Settings, unless you install from Terminal. After that it opens like any other app.</p>
       </div>
     </section>
@@ -397,6 +400,7 @@
     <p class="fine">Applarchy is a fan project and is not affiliated with, endorsed by or sponsored by Apple Inc. or Basecamp. Apple and the Apple logo are trademarks of Apple Inc., registered in the U.S. and other countries. Omarchy is a project by Basecamp.</p>
   </footer>
 
+  <p class="sr-only" id="announce" aria-live="polite"></p>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
