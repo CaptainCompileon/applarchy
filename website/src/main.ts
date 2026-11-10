@@ -1,5 +1,6 @@
 import './styles.css'
 import { EFFECTS, effectTitle, THEMES, type Theme } from './data'
+import { onEngineFailure } from './engine'
 import { blocksToPixels, defaultLogo, hasAppleLogo, pixelsToBlocks, stormLogo, textLogo } from './logos'
 import { Screen, stats, type ClockOptions } from './screen'
 
@@ -10,6 +11,14 @@ const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = docu
 const $$ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => [...root.querySelectorAll(sel)] as T[]
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
 const swatchColors = (t: Theme) => t.stops.length ? t.stops : ['8a008a', '00d1ff', 'ffffff']
+
+/** Said to screen readers, once: what the visitor did, or what went wrong. The lines that
+ *  name the playing effect change every few seconds, so they aren't live regions. */
+const announcer = $('#announce')
+const announce = (text: string) => { announcer.textContent = text }
+
+// "Click for full screen" only where an element can go full screen (not on iPhone).
+if (typeof document.documentElement.requestFullscreen !== 'function') document.documentElement.classList.add('no-fullscreen')
 
 // ---------------------------------------------------------------- reveal + scramble
 
@@ -73,6 +82,7 @@ new Screen($('#hero-screen'), {
 
 // ---------------------------------------------------------------- II. the app window
 
+let lastPreviewed: string | null = null
 const state = {
   selected: new Set(['beams', 'bubbles', 'decrypt', 'fireworks', 'matrix', 'rings', 'thunderstorm', 'blackhole']),
   theme: THEMES[1],
@@ -95,9 +105,19 @@ const appScreen = new Screen($('#app-screen'), {
     $$('.fx-item', fxList).forEach(li => li.classList.toggle('playing', li.dataset.id === id))
     status.textContent = state.previewing === id
       ? `Previewing ${effectTitle(id)} — click it again to preview your selection`
-      : `Playing ${effectTitle(id)} from your selection`
+      : state.selected.size ? `Playing ${effectTitle(id)} from your selection`
+      : `Playing ${effectTitle(id)} — nothing is selected, so every effect plays`
     if (state.previewing === id) state.previewing = null
+    else lastPreviewed = null          // the preview is over: a click on this effect previews it
   },
+})
+
+// The engine didn't load (no WebAssembly here, or offline): the screens show the logo
+// still, and the lines that name the playing effect say why. A later load takes them over.
+onEngineFailure(() => {
+  heroNow.textContent = "The engine didn't load here · showing the logo still"
+  status.textContent = "The preview's engine didn't load here, so the logo stands still"
+  announce("The live demos couldn't load their engine, which needs WebAssembly. The logo is shown still.")
 })
 
 fxList.innerHTML = EFFECTS.map(e => `
@@ -106,9 +126,18 @@ fxList.innerHTML = EFFECTS.map(e => `
     <button class="fx-name" type="button" aria-label="Preview ${e.title}"><b>${e.title}</b><span>${e.summary}</span></button>
   </li>`).join('')
 
+const appActions = $$<HTMLAnchorElement>('#app .actions .big-btn')
+const appNone = $('#app-none')
 function selectionChanged() {
+  const none = state.selected.size === 0
   fxFoot.textContent = `${state.selected.size}/${EFFECTS.length} selected · click a name to preview`
-  appScreen.setPlaylist([...state.selected])
+  // None ticked, as in the app: the preview plays everything, and there's nothing to apply.
+  appScreen.setPlaylist(none ? EFFECTS.map(e => e.id) : [...state.selected])
+  appNone.hidden = !none
+  appActions.forEach(a => {
+    a.setAttribute('aria-disabled', String(none))
+    a.tabIndex = none ? -1 : 0
+  })
 }
 fxList.addEventListener('change', e => {
   const input = e.target as HTMLInputElement
@@ -116,7 +145,6 @@ fxList.addEventListener('change', e => {
   if (input.checked) state.selected.add(id); else state.selected.delete(id)
   selectionChanged()
 })
-let lastPreviewed: string | null = null
 fxList.addEventListener('click', e => {
   const btn = (e.target as HTMLElement).closest('.fx-name')
   if (!btn) return
@@ -124,11 +152,13 @@ fxList.addEventListener('click', e => {
   if (lastPreviewed === id && appScreen.current === id) {
     lastPreviewed = null
     status.textContent = 'Previewing your selection'
+    announce('Previewing your selection')
     appScreen.restart()
     return
   }
   lastPreviewed = id
   state.previewing = id
+  announce(`Previewing ${effectTitle(id)}`)
   appScreen.preview(id)
 })
 $$('[data-fx]').forEach(b => b.addEventListener('click', () => {
@@ -308,6 +338,32 @@ const endStroke = () => { if (painting !== null) { painting = null; last = null;
 padGrid.addEventListener('pointerup', endStroke)
 padGrid.addEventListener('pointercancel', endStroke)
 
+// By keyboard: the arrow keys move a cursor square, Space or Enter fills or erases it.
+let cursor: [number, number] | null = null
+const cursorCell = () => cursor && cells[cursor[0] * COLS + cursor[1]]
+const moveCursor = (r: number, c: number) => {
+  cursorCell()?.classList.remove('cursor')
+  cursor = [Math.max(0, Math.min(ROWS - 1, r)), Math.max(0, Math.min(COLS - 1, c))]
+  cursorCell()!.classList.add('cursor')
+  announce(`Row ${cursor[0] + 1}, column ${cursor[1] + 1}, ${px[cursor[0]][cursor[1]] ? 'filled' : 'empty'}`)
+}
+const ARROWS: Record<string, [number, number]> = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }
+padGrid.tabIndex = 0
+padGrid.addEventListener('keydown', e => {
+  const [r, c] = cursor ?? [ROWS >> 1, COLS >> 1]
+  const step = ARROWS[e.key]
+  if (step) {
+    e.preventDefault()
+    moveCursor(cursor ? r + step[0] : r, cursor ? c + step[1] : c)   // the first press only shows where it is
+  } else if (e.key === ' ' || e.key === 'Enter') {
+    e.preventDefault()
+    set(r, c, !px[r][c])
+    moveCursor(r, c)
+    padChanged()
+  }
+})
+padGrid.addEventListener('blur', () => cursorCell()?.classList.remove('cursor'))
+
 $('#pad-clear').addEventListener('click', () => { px = px.map(row => row.map(() => false)); paintPad() })
 $('#pad-reset').addEventListener('click', () => { px = blocksToPixels(stormLogo(), COLS, ROWS); padChanged() })
 $('#pad-invert').addEventListener('click', () => { px = px.map(row => row.map(v => !v)); padChanged() })
@@ -351,6 +407,9 @@ const wallScreen = new Screen($('#wall-screen'), {
 let wallTimer = 0
 new IntersectionObserver(([e]) => {
   clearInterval(wallTimer)
+  // Every visit starts uncovered and playing, however the last one was left.
+  wall.classList.remove('covered')
+  wallScreen.pause(false)
   if (!e.isIntersecting || reducedMotion) return
   let covered = false
   wallTimer = window.setInterval(() => {

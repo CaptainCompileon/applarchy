@@ -14,13 +14,28 @@ interface Exports {
 }
 
 let loading: Promise<Engine> | null = null
+let failedAt = -Infinity
+const RETRY_AFTER_MS = 5000
+const failureListeners: (() => void)[] = []
 
-/** The engine, loaded once and shared by every screen on the page. */
+/** `listener` runs each time the engine fails to load: no WebAssembly here (Lockdown
+ *  Mode, an old browser), or its file didn't arrive. */
+export const onEngineFailure = (listener: () => void) => { failureListeners.push(listener) }
+
+/** The engine, loaded once and shared by every screen on the page. A failed load isn't
+ *  kept: asking again a while later tries again (the connection may be back). */
 export function loadEngine(): Promise<Engine> {
-  return (loading ??= instantiate().then(e => new Engine(e)))
+  if (!loading && performance.now() - failedAt < RETRY_AFTER_MS) return Promise.reject(new Error('the engine failed to load a moment ago'))
+  return (loading ??= instantiate().then(e => new Engine(e)).catch(error => {
+    loading = null
+    failedAt = performance.now()
+    failureListeners.forEach(listener => listener())
+    throw error
+  }))
 }
 
 async function instantiate(): Promise<Exports> {
+  if (typeof WebAssembly !== 'object') throw new Error('WebAssembly is not available')
   let memory: WebAssembly.Memory | undefined
   const view = () => new DataView(memory!.buffer)
   // The few WASI calls Rust's std makes here: the clock for Instant, randomness for
@@ -74,14 +89,20 @@ export class Engine {
     return [ptr, bytes.length]
   }
 
-  /** An effect over `text`, `command` being "name [options]" as the app passes it. */
+  /** An effect over `text`, `command` being "name [options]" as the app passes it. Null if
+   *  it can't be built, or building it trapped: in WebAssembly a panic aborts (wasm/Cargo.toml),
+   *  so the engine's own guard (saver_ffi.rs) can't catch it and it's caught here instead. */
   effect(text: string, cols: number, rows: number, command: string, seed = randomSeed()): Effect | null {
-    const [t, tl] = this.cString(text)
-    const [c, cl] = this.cString(command)
-    const ptr = this.x.ttfx_saver_new_named(t, cols, rows, seed, c)
-    this.x.web_free(t, tl)
-    this.x.web_free(c, cl)
-    return ptr ? new Effect(this, ptr) : null
+    try {
+      const [t, tl] = this.cString(text)
+      const [c, cl] = this.cString(command)
+      const ptr = this.x.ttfx_saver_new_named(t, cols, rows, seed, c)
+      this.x.web_free(t, tl)
+      this.x.web_free(c, cl)
+      return ptr ? new Effect(this, ptr) : null
+    } catch {
+      return null
+    }
   }
 
   /** Advance `saver` one frame: where its ANSI bytes are, or 0 when it's over. */
@@ -99,20 +120,29 @@ export class Engine {
 export class Effect {
   frames = 0
   done = false
+  /** A step trapped: the effect is over (`done`) and what it drew can't be trusted. */
+  failed = false
   constructor(private engine: Engine, private ptr: number) {}
 
-  /** Step up to `n` frames; the last one's bytes, or null if none (the effect ended). */
+  /** Step up to `n` frames; the last one's bytes, or null if none (the effect ended, or failed). */
   advance(n: number): Uint8Array | null {
     let last = 0
-    for (let i = 0; i < n && !this.done; i++) {
-      const p = this.engine.next(this.ptr)
-      if (p) { last = p; this.frames++ } else this.done = true
+    try {
+      for (let i = 0; i < n && !this.done; i++) {
+        const p = this.engine.next(this.ptr)
+        if (p) { last = p; this.frames++ } else this.done = true
+      }
+    } catch {
+      // Left as it is, not freed: its state is whatever the trap left behind.
+      this.failed = this.done = true
+      this.ptr = 0
+      return null
     }
     return last ? this.engine.bytes(last) : null
   }
 
   free() {
-    if (this.ptr) this.engine.x.ttfx_saver_free(this.ptr)
+    try { if (this.ptr) this.engine.x.ttfx_saver_free(this.ptr) } catch { /* trapped: nothing more to do */ }
     this.ptr = 0
     this.done = true
   }

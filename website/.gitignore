@@ -3,3 +3,4 @@ dist/
 wasm/target/
 .vercel
 .env*
+.vite/
