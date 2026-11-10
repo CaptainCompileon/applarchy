@@ -70,6 +70,18 @@ enum Screensaver {
         return true
     }
 
+    /// The installed screensaver is another version than the one in this app (the app was
+    /// updated since it was installed): replace its code, keeping its settings. Only where
+    /// that works in place; otherwise it waits for the next Apply, which may ask to install.
+    static func refreshIfOutdated() {
+        func version(_ bundle: URL) -> String? {
+            NSDictionary(contentsOf: bundle.appendingPathComponent("Contents/Info.plist"))?["CFBundleShortVersionString"] as? String
+        }
+        guard let installed, let old = version(installed), let new = version(template), old != new,
+              let json = try? Data(contentsOf: installed.appendingPathComponent("Contents/Resources/config.json")) else { return }
+        _ = try? updateInPlace(installed, json: json)
+    }
+
     /// Switch the installed screensaver's smooth mode on or off, keeping its look.
     static func setSmooth(_ on: Bool) {
         guard var config = currentConfig, config.smoothTransition != on else { return }

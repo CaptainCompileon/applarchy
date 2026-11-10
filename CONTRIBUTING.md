@@ -62,6 +62,9 @@ APPLARCHY_FLAVOR=release scripts/package-dmg.sh    # → dist/Applarchy-<version
 | `OMARCHY_SNAPSHOT_MODE=smooth` | The mode picker's selection (default `custom`; kept apart from real settings) |
 | `OMARCHY_SNAPSHOT_DELAY=5` | Seconds before the capture |
 | `OMARCHY_SNAPSHOT_EDITOR=1` | Open the custom-logo editor |
+| `OMARCHY_SNAPSHOT_AUTOUPDATE=1` | Show the "Update automatically?" question |
+| `APPLARCHY_PRETEND_VERSION=1.0` | Pretend to be that version: the update prompt (in a snapshot too), and on a dev build the update check |
+| `APPLARCHY_UPDATE_DMG=/path/to.dmg` | Dev builds only: Update stages this disk image instead of downloading the release's (no checksum), to try installing an update. Build one with a higher version: `APPLARCHY_VERSION=99.0 scripts/package-dmg.sh` |
 | `OMARCHY_SNAPSHOT_PAGE=2` | Tutorial page |
 | `OMARCHY_PREVIEW_DIRECT=1` | Draw the preview directly (for window captures) |
 | `Applarchy --snapshot prefix` | `ImageRenderer` PNGs of the main view and tutorial steps |
